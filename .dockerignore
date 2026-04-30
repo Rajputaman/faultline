@@ -1,0 +1,12 @@
+.git
+.faultline
+bin
+dist
+coverage.out
+faultline
+faultline-report.html
+faultline-report.json
+faultline.sarif
+faultline-pr.sarif
+review.md
+*.test

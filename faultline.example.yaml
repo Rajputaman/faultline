@@ -1,0 +1,43 @@
+version: 1
+
+ownership:
+  require_codeowners: true
+  max_author_count_90d: 6
+
+owners:
+  aliases:
+    "@payments-platform":
+      - "alice@example.com"
+      - "bob@example.com"
+      - "@github-team/payments"
+  modules:
+    "github.com/acme/service-a":
+      owner: "@service-a-team"
+    "github.com/acme/shared":
+      owner: "@platform-team"
+
+coverage:
+  min_package_coverage: 60
+
+suppression_policy:
+  require_owner: true
+  require_reason: true
+  require_expiry: true
+  max_days: 180
+
+boundaries:
+  - name: handlers-must-not-import-storage
+    from: "*/internal/handlers/*"
+    deny:
+      - "*/internal/storage/*"
+    except:
+      - "*/internal/storage/contracts"
+
+suppressions:
+  - id: FL-EXAMPLE-001
+    category: BOUNDARY
+    package: "internal/legacy/*"
+    reason: "Legacy package scheduled for replacement"
+    owner: "@platform-team"
+    created: "2026-04-30"
+    expires: "2026-09-30"

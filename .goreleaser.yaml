@@ -1,0 +1,113 @@
+version: 2
+
+project_name: faultline
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: faultline
+    main: ./cmd/faultline
+    binary: faultline
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/faultline-go/faultline/internal/version.Version={{ .Version }}
+      - -X github.com/faultline-go/faultline/internal/version.Commit={{ .Commit }}
+      - -X github.com/faultline-go/faultline/internal/version.BuildDate={{ .Date }}
+
+archives:
+  - id: default
+    ids:
+      - faultline
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      - README.md
+      - LICENSE
+      - faultline.example.yaml
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+brews:
+  - name: faultline
+    ids:
+      - default
+    repository:
+      owner: faultline-dev
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: faultline-release-bot
+      email: releases@faultline.dev
+    homepage: https://github.com/faultline-go/faultline
+    description: Structural risk analysis for Go codebases
+    license: Apache-2.0
+    url_template: "https://github.com/faultline-go/faultline/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    install: |
+      bin.install "faultline"
+    test: |
+      system "#{bin}/faultline", "version"
+    skip_upload: "{{ if index .Env \"HOMEBREW_TAP_GITHUB_TOKEN\" }}false{{ else }}true{{ end }}"
+
+dockers_v2:
+  - id: faultline
+    ids:
+      - faultline
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/faultline-dev/faultline
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    build_args:
+      VERSION: "{{ .Version }}"
+      COMMIT: "{{ .Commit }}"
+      DATE: "{{ .Date }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/faultline-go/faultline
+      org.opencontainers.image.description: Faultline structural risk analysis CLI for Go codebases
+      org.opencontainers.image.licenses: Apache-2.0
+      org.opencontainers.image.version: "{{ .Version }}"
+    disable: "{{ .IsSnapshot }}"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  disable: true
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"

@@ -1,0 +1,123 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build without CGO
+        run: CGO_ENABLED=0 go build ./cmd/faultline
+
+      - name: Build Docker image locally
+        run: docker build -t faultline:release-check .
+
+      - name: Set up Docker Buildx
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: GoReleaser snapshot dry run
+        if: github.event_name == 'workflow_dispatch'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --clean
+
+      - name: GoReleaser tag build
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: goreleaser/goreleaser-action@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOMs
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for artifact in dist/*.tar.gz dist/*.zip; do
+            syft "$artifact" -o spdx-json="${artifact}.spdx.json"
+          done
+
+      - name: Refresh checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          find dist -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.spdx.json' \) -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > dist/checksums.txt
+
+      - name: Install Cosign
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign checksums
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          cosign sign-blob --yes \
+            --output-signature dist/checksums.txt.sig \
+            --output-certificate dist/checksums.txt.pem \
+            dist/checksums.txt
+
+      - name: Generate provenance attestations
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.spdx.json
+            dist/checksums.txt
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: faultline-release-artifacts
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.spdx.json
+            dist/checksums.txt
+            dist/checksums.txt.sig
+            dist/checksums.txt.pem
+          if-no-files-found: error
