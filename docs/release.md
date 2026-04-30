@@ -58,11 +58,15 @@ git tag -a v0.1.0 -m "v0.1.0"
 git push origin v0.1.0
 ```
 
-The CI release dry run runs on manual workflow dispatch without signing or provenance. Version tags run the release workflow, which builds artifacts, generates SBOMs, refreshes checksums, signs the checksum file with Cosign keyless signing, publishes the GHCR image when registry permissions are available, and requests GitHub artifact attestations.
+The CI release dry run runs on manual workflow dispatch without signing or provenance. Version tags run the release workflow, which builds artifacts, generates SBOMs, refreshes checksums, signs the checksum file with Cosign keyless signing, publishes the GHCR image when registry permissions are available, requests GitHub artifact attestations, and uploads release assets to the GitHub release.
+
+GoReleaser's direct GitHub release pipe is intentionally disabled. The workflow
+creates or updates the GitHub release after SBOMs, refreshed checksums,
+signatures, and attestations are available so users see a complete asset set.
 
 ## Homebrew
 
-GoReleaser is configured to generate a Homebrew formula named `faultline` for the placeholder tap repo `faultline-dev/homebrew-tap`.
+GoReleaser is configured to generate a Homebrew formula named `faultline` for the tap repo `faultline-go/homebrew-tap`.
 
 The formula includes:
 
@@ -76,7 +80,7 @@ Tap publishing is token-gated. Set `HOMEBREW_TAP_GITHUB_TOKEN` in the release wo
 Expected user install path after the tap exists:
 
 ```sh
-brew tap faultline-dev/tap
+brew tap faultline-go/tap
 brew install faultline
 faultline version
 ```
@@ -86,7 +90,7 @@ faultline version
 The release workflow builds and publishes multi-arch images to:
 
 ```text
-ghcr.io/faultline-dev/faultline
+ghcr.io/faultline-go/faultline
 ```
 
 Configured platforms:
@@ -106,15 +110,15 @@ GHCR publishing assumes:
 
 - the release workflow has `packages: write`
 - the workflow can log in with `GITHUB_TOKEN`
-- the `ghcr.io/faultline-dev/faultline` package namespace is allowed for the repository
+- the `ghcr.io/faultline-go/faultline` package namespace is allowed for the repository
 
 Snapshot and local GoReleaser dry runs disable Docker publishing.
 
 Container users should verify image provenance through GHCR/GitHub metadata and pinned immutable digests where possible:
 
 ```sh
-docker pull ghcr.io/faultline-dev/faultline:v0.1.0
-docker image inspect ghcr.io/faultline-dev/faultline:v0.1.0
+docker pull ghcr.io/faultline-go/faultline:v0.1.0
+docker image inspect ghcr.io/faultline-go/faultline:v0.1.0
 ```
 
 Container tags are convenient, but production CI should prefer pinned digests after the image has been verified.

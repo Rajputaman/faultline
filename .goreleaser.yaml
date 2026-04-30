@@ -45,6 +45,7 @@ archives:
     files:
       - README.md
       - LICENSE
+      - NOTICE
       - faultline.example.yaml
 
 checksum:
@@ -56,7 +57,7 @@ brews:
     ids:
       - default
     repository:
-      owner: faultline-dev
+      owner: faultline-go
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_author:
@@ -78,7 +79,7 @@ dockers_v2:
       - faultline
     dockerfile: Dockerfile
     images:
-      - ghcr.io/faultline-dev/faultline
+      - ghcr.io/faultline-go/faultline
     tags:
       - "{{ .Version }}"
       - "{{ .Major }}.{{ .Minor }}"
@@ -107,6 +108,9 @@ changelog:
       - "^chore:"
 
 release:
+  # The workflow creates the GitHub release after SBOMs, refreshed checksums,
+  # signatures, and attestations are generated so all release assets are
+  # published together.
   disable: true
 
 snapshot:

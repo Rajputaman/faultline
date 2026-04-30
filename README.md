@@ -1,8 +1,15 @@
 # Faultline
 
+[![ci](https://github.com/faultline-go/faultline/actions/workflows/ci.yml/badge.svg)](https://github.com/faultline-go/faultline/actions/workflows/ci.yml)
+[![release](https://github.com/faultline-go/faultline/actions/workflows/release.yml/badge.svg)](https://github.com/faultline-go/faultline/actions/workflows/release.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/faultline-go/faultline.svg)](https://pkg.go.dev/github.com/faultline-go/faultline)
+
 Faultline is structural risk analysis for Go codebases. It scans Go repositories and produces explainable package-level risk reports from code structure, git history, ownership, coverage, and architecture policy inputs.
 
 Faultline is local-first. It does not upload source code, run a server, execute repository scripts, or require runtime network access.
+
+Faultline OSS is Apache 2.0 licensed. The public project is intended to stay genuinely useful for local and CI workflows; paid products should monetize organization-wide governance and automation rather than cripple local scanning.
 
 ## What Faultline Is
 
@@ -16,6 +23,14 @@ Faultline is local-first. It does not upload source code, run a server, execute 
 - It is not a SaaS backend.
 - It is not a dashboard.
 - It is not a replacement for tests, code review, or architecture ownership.
+
+## Open-Core Boundary
+
+Faultline's OSS core includes the scanner engine, local HTML/JSON/SARIF reports, PR markdown output, local baselines, local SQLite history, config governance, suppressions audit, local rule packs, dependency findings, boundary findings, ownership findings, and multi-module scanning.
+
+Commercial Faultline products should be additive: multi-repo dashboards, centralized policy packs, suppression approval workflows, SSO/RBAC, Slack/Jira automation, portfolio trends, audit exports, and managed onboarding. The scanner, SARIF, PR markdown, local reports, local trends, baselines, and config policy engine must remain usable without login.
+
+The public integration contract for paid systems is metadata-only. See [docs/open-core.md](docs/open-core.md) and [docs/export-contracts.md](docs/export-contracts.md).
 
 ## Installation
 
@@ -43,7 +58,7 @@ On macOS, use `shasum -a 256 -c checksums.txt` if `sha256sum` is unavailable. On
 Install with Homebrew after the tap is published:
 
 ```sh
-brew tap faultline-dev/tap
+brew tap faultline-go/tap
 brew install faultline
 faultline version
 ```
@@ -51,8 +66,8 @@ faultline version
 Run with Docker:
 
 ```sh
-docker run --rm ghcr.io/faultline-dev/faultline:latest version
-docker run --rm -v "$PWD:/workspace" -w /workspace ghcr.io/faultline-dev/faultline:latest scan ./... --format html --out faultline-report.html
+docker run --rm ghcr.io/faultline-go/faultline:latest version
+docker run --rm -v "$PWD:/workspace" -w /workspace ghcr.io/faultline-go/faultline:latest scan ./... --format html --out faultline-report.html
 ```
 
 The container includes Go and git so package loading and history analysis work in CI. Local history under `.faultline/` is written inside the mounted repository only when that mount is writable; otherwise history degrades to report warnings.
@@ -92,6 +107,16 @@ For local development:
 make build
 bin/faultline version
 ```
+
+## Contributing and Security
+
+Faultline accepts contributions under Apache 2.0 with Developer Certificate of Origin sign-off:
+
+```sh
+git commit -s
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance and [SECURITY.md](SECURITY.md) for vulnerability reporting. The Faultline name and marks are not licensed by Apache 2.0; see [NOTICE](NOTICE).
 
 ## Usage
 
@@ -548,7 +573,7 @@ jobs:
           docker run --rm \
             -v "$PWD:/workspace" \
             -w /workspace \
-            ghcr.io/faultline-dev/faultline:latest \
+            ghcr.io/faultline-go/faultline:latest \
             scan ./... --format json --out faultline-report.json --fail-on high
       - uses: actions/upload-artifact@v4
         if: always()

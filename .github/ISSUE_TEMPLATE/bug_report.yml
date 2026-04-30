@@ -1,0 +1,44 @@
+name: Bug report
+description: Report incorrect behavior in the Faultline CLI or reports.
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a Faultline issue. Do not include private source code or secrets.
+  - type: input
+    id: version
+    attributes:
+      label: Faultline version
+      description: Run `faultline version`.
+      placeholder: "faultline version ..."
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command that failed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: OS, Go version, module layout, config snippets, and sanitized report excerpts.
+    validations:
+      required: false

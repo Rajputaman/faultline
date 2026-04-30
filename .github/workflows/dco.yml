@@ -1,0 +1,30 @@
+name: dco
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit sign-offs
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          missing=0
+          for commit in $(git rev-list "$base..$head"); do
+            if ! git log -1 --format=%B "$commit" | grep -qi '^Signed-off-by:'; then
+              echo "missing DCO sign-off: $commit"
+              missing=1
+            fi
+          done
+          exit "$missing"

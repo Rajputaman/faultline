@@ -26,7 +26,7 @@ LABEL org.opencontainers.image.source="https://github.com/faultline-go/faultline
 RUN apk add --no-cache ca-certificates git
 COPY --from=build /out/faultline /usr/local/bin/faultline
 COPY faultline.example.yaml /usr/local/share/faultline/faultline.example.yaml
-COPY README.md LICENSE /usr/local/share/faultline/
+COPY README.md LICENSE NOTICE /usr/local/share/faultline/
 
 WORKDIR /workspace
 ENTRYPOINT ["faultline"]
