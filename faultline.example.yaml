@@ -19,6 +19,13 @@ owners:
 coverage:
   min_package_coverage: 60
 
+scoring:
+  churn_max_lines_30d: 1000
+  complexity_max_loc: 1000
+  complexity_max_imports: 20
+  complexity_max_files: 30
+  dependency_centrality_max_reverse_imports: 10
+
 suppression_policy:
   require_owner: true
   require_reason: true

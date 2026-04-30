@@ -25,6 +25,7 @@ type Config struct {
 	Ownership         OwnershipConfig   `yaml:"ownership" json:"ownership"`
 	Owners            OwnersConfig      `yaml:"owners" json:"owners,omitempty"`
 	Coverage          CoverageConfig    `yaml:"coverage" json:"coverage"`
+	Scoring           ScoringConfig     `yaml:"scoring" json:"scoring"`
 	Boundaries        []BoundaryRule    `yaml:"boundaries" json:"boundaries,omitempty"`
 	SuppressionPolicy SuppressionPolicy `yaml:"suppression_policy" json:"suppression_policy,omitempty"`
 	Suppressions      []Suppression     `yaml:"suppressions" json:"suppressions,omitempty"`
@@ -54,6 +55,16 @@ type ModuleOwnerConfig struct {
 // CoverageConfig controls coverage thresholds.
 type CoverageConfig struct {
 	MinPackageCoverage float64 `yaml:"min_package_coverage" json:"min_package_coverage"`
+}
+
+// ScoringConfig controls calibration constants for normalized component
+// scores. Defaults preserve the initial Faultline risk model.
+type ScoringConfig struct {
+	ChurnMaxLines30d                          int `yaml:"churn_max_lines_30d" json:"churn_max_lines_30d"`
+	ComplexityMaxLOC                          int `yaml:"complexity_max_loc" json:"complexity_max_loc"`
+	ComplexityMaxImports                      int `yaml:"complexity_max_imports" json:"complexity_max_imports"`
+	ComplexityMaxFiles                        int `yaml:"complexity_max_files" json:"complexity_max_files"`
+	DependencyCentralityMaxReverseImportCount int `yaml:"dependency_centrality_max_reverse_imports" json:"dependency_centrality_max_reverse_imports"`
 }
 
 // BoundaryRule defines an import boundary that must not be crossed.
@@ -190,12 +201,43 @@ func DefaultConfig() Config {
 		Coverage: CoverageConfig{
 			MinPackageCoverage: 60,
 		},
+		Scoring: DefaultScoringConfig(),
 		SuppressionPolicy: SuppressionPolicy{
 			RequireOwner:   true,
 			RequireReason:  true,
 			RequireExpires: true,
 		},
 	}
+}
+
+func DefaultScoringConfig() ScoringConfig {
+	return ScoringConfig{
+		ChurnMaxLines30d:                          1000,
+		ComplexityMaxLOC:                          1000,
+		ComplexityMaxImports:                      20,
+		ComplexityMaxFiles:                        30,
+		DependencyCentralityMaxReverseImportCount: 10,
+	}
+}
+
+func NormalizeScoringConfig(cfg ScoringConfig) ScoringConfig {
+	defaults := DefaultScoringConfig()
+	if cfg.ChurnMaxLines30d <= 0 {
+		cfg.ChurnMaxLines30d = defaults.ChurnMaxLines30d
+	}
+	if cfg.ComplexityMaxLOC <= 0 {
+		cfg.ComplexityMaxLOC = defaults.ComplexityMaxLOC
+	}
+	if cfg.ComplexityMaxImports <= 0 {
+		cfg.ComplexityMaxImports = defaults.ComplexityMaxImports
+	}
+	if cfg.ComplexityMaxFiles <= 0 {
+		cfg.ComplexityMaxFiles = defaults.ComplexityMaxFiles
+	}
+	if cfg.DependencyCentralityMaxReverseImportCount <= 0 {
+		cfg.DependencyCentralityMaxReverseImportCount = defaults.DependencyCentralityMaxReverseImportCount
+	}
+	return cfg
 }
 
 // LoadConfig reads and parses a faultline YAML config file.
@@ -326,6 +368,9 @@ func ValidateConfig(path string, cfg Config, unknown []ValidationIssue, configHa
 	}
 	if cfg.Coverage.MinPackageCoverage < 0 || cfg.Coverage.MinPackageCoverage > 100 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "coverage.min_package_coverage", Message: "must be between 0 and 100"})
+	}
+	for _, issue := range validateScoringConfigIssues(cfg.Scoring) {
+		report.Issues = append(report.Issues, issue)
 	}
 	if cfg.SuppressionPolicy.MaxDays < 0 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "suppression_policy.max_days", Message: "must be zero or greater"})
@@ -484,6 +529,21 @@ func mergeConfig(dst *Config, src Config, root yaml.Node, context string, issues
 	if nodeHasPath(root, "coverage.min_package_coverage") {
 		dst.Coverage.MinPackageCoverage = src.Coverage.MinPackageCoverage
 	}
+	if nodeHasPath(root, "scoring.churn_max_lines_30d") {
+		dst.Scoring.ChurnMaxLines30d = src.Scoring.ChurnMaxLines30d
+	}
+	if nodeHasPath(root, "scoring.complexity_max_loc") {
+		dst.Scoring.ComplexityMaxLOC = src.Scoring.ComplexityMaxLOC
+	}
+	if nodeHasPath(root, "scoring.complexity_max_imports") {
+		dst.Scoring.ComplexityMaxImports = src.Scoring.ComplexityMaxImports
+	}
+	if nodeHasPath(root, "scoring.complexity_max_files") {
+		dst.Scoring.ComplexityMaxFiles = src.Scoring.ComplexityMaxFiles
+	}
+	if nodeHasPath(root, "scoring.dependency_centrality_max_reverse_imports") {
+		dst.Scoring.DependencyCentralityMaxReverseImportCount = src.Scoring.DependencyCentralityMaxReverseImportCount
+	}
 	if nodeHasPath(root, "suppression_policy.require_owner") {
 		dst.SuppressionPolicy.RequireOwner = src.SuppressionPolicy.RequireOwner
 	}
@@ -586,6 +646,7 @@ func unknownConfigKeys(root yaml.Node, rulePack bool) []ValidationIssue {
 		"ownership":          true,
 		"owners":             true,
 		"coverage":           true,
+		"scoring":            true,
 		"boundaries":         true,
 		"suppression_policy": true,
 		"suppressions":       true,
@@ -613,6 +674,14 @@ func unknownConfigKeys(root yaml.Node, rulePack bool) []ValidationIssue {
 		case "coverage":
 			issues = append(issues, unknownMappingKeys(value, "coverage", map[string]bool{
 				"min_package_coverage": true,
+			})...)
+		case "scoring":
+			issues = append(issues, unknownMappingKeys(value, "scoring", map[string]bool{
+				"churn_max_lines_30d":                       true,
+				"complexity_max_loc":                        true,
+				"complexity_max_imports":                    true,
+				"complexity_max_files":                      true,
+				"dependency_centrality_max_reverse_imports": true,
 			})...)
 		case "boundaries":
 			issues = append(issues, unknownSequenceMappingKeys(value, "boundaries", map[string]bool{
@@ -748,6 +817,26 @@ func validateBoundaryRuleIssues(rule BoundaryRule, context string) []ValidationI
 		}
 		if err := validateGlobish(pattern); err != nil {
 			issues = append(issues, ValidationIssue{Level: ValidationWarning, Path: path, Message: fmt.Sprintf("invalid pattern %q: %v", pattern, err)})
+		}
+	}
+	return issues
+}
+
+func validateScoringConfigIssues(cfg ScoringConfig) []ValidationIssue {
+	values := []struct {
+		path  string
+		value int
+	}{
+		{path: "scoring.churn_max_lines_30d", value: cfg.ChurnMaxLines30d},
+		{path: "scoring.complexity_max_loc", value: cfg.ComplexityMaxLOC},
+		{path: "scoring.complexity_max_imports", value: cfg.ComplexityMaxImports},
+		{path: "scoring.complexity_max_files", value: cfg.ComplexityMaxFiles},
+		{path: "scoring.dependency_centrality_max_reverse_imports", value: cfg.DependencyCentralityMaxReverseImportCount},
+	}
+	var issues []ValidationIssue
+	for _, item := range values {
+		if item.value <= 0 {
+			issues = append(issues, ValidationIssue{Level: ValidationWarning, Path: item.path, Message: "must be greater than zero"})
 		}
 	}
 	return issues

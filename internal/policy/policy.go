@@ -23,12 +23,18 @@ func (c Config) BoundaryRules() []BoundaryRule {
 }
 
 func (c Config) Summary() report.ConfigSummary {
+	scoring := NormalizeScoringConfig(c.Scoring)
 	return report.ConfigSummary{
-		OwnershipRequireCodeowners: c.Ownership.RequireCodeowners,
-		OwnershipMaxAuthorCount90d: c.Ownership.MaxAuthorCount90d,
-		CoverageMinPackageCoverage: c.Coverage.MinPackageCoverage,
-		BoundaryRuleCount:          len(c.Boundaries),
-		SuppressionCount:           len(c.Suppressions),
+		OwnershipRequireCodeowners:                   c.Ownership.RequireCodeowners,
+		OwnershipMaxAuthorCount90d:                   c.Ownership.MaxAuthorCount90d,
+		CoverageMinPackageCoverage:                   c.Coverage.MinPackageCoverage,
+		ScoringChurnMaxLines30d:                      scoring.ChurnMaxLines30d,
+		ScoringComplexityMaxLOC:                      scoring.ComplexityMaxLOC,
+		ScoringComplexityMaxImports:                  scoring.ComplexityMaxImports,
+		ScoringComplexityMaxFiles:                    scoring.ComplexityMaxFiles,
+		ScoringDependencyCentralityMaxReverseImports: scoring.DependencyCentralityMaxReverseImportCount,
+		BoundaryRuleCount:                            len(c.Boundaries),
+		SuppressionCount:                             len(c.Suppressions),
 	}
 }
 

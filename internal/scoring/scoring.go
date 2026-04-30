@@ -35,13 +35,14 @@ func ScorePackage(pkg report.PackageRisk, opts Options) Result {
 	if cfg.Version == 0 {
 		cfg = policy.DefaultConfig()
 	}
+	scoringCfg := policy.NormalizeScoringConfig(cfg.Scoring)
 
 	breakdown := report.ScoreBreakdown{
-		ChurnScore:                clamp(float64(pkg.Churn30d)/1000.0*100.0, 0, 100),
+		ChurnScore:                clamp(float64(pkg.Churn30d)/float64(scoringCfg.ChurnMaxLines30d)*100.0, 0, 100),
 		CoverageGapScore:          coverageGapScore(pkg.CoveragePct, cfg),
-		ComplexityScore:           complexity(pkg),
+		ComplexityScore:           complexity(pkg, scoringCfg),
 		OwnershipEntropyScore:     clamp(pkg.OwnershipEntropy*100.0, 0, 100),
-		DependencyCentralityScore: clamp(float64(pkg.ReverseImportCount)/10.0*100.0, 0, 100),
+		DependencyCentralityScore: clamp(float64(pkg.ReverseImportCount)/float64(scoringCfg.DependencyCentralityMaxReverseImportCount)*100.0, 0, 100),
 	}
 
 	risk := breakdown.ChurnScore*0.25 +
@@ -187,10 +188,11 @@ func coverageGapScore(coveragePct *float64, cfg policy.Config) float64 {
 	return clamp((minCoverage-*coveragePct)/minCoverage*100.0, 0, 100)
 }
 
-func complexity(pkg report.PackageRisk) float64 {
-	locComponent := clamp(float64(pkg.LOC)/1000.0*100.0, 0, 100)
-	importComponent := clamp(float64(pkg.ImportCount)/20.0*100.0, 0, 100)
-	fileComponent := clamp(float64(pkg.FileCount-pkg.GeneratedFileCount)/30.0*100.0, 0, 100)
+func complexity(pkg report.PackageRisk, cfg policy.ScoringConfig) float64 {
+	cfg = policy.NormalizeScoringConfig(cfg)
+	locComponent := clamp(float64(pkg.LOC)/float64(cfg.ComplexityMaxLOC)*100.0, 0, 100)
+	importComponent := clamp(float64(pkg.ImportCount)/float64(cfg.ComplexityMaxImports)*100.0, 0, 100)
+	fileComponent := clamp(float64(pkg.FileCount-pkg.GeneratedFileCount)/float64(cfg.ComplexityMaxFiles)*100.0, 0, 100)
 	return locComponent*0.45 + importComponent*0.35 + fileComponent*0.20
 }
 

@@ -62,6 +62,15 @@ coverage:
 			wantWarnings: 1,
 		},
 		{
+			name: "unknown nested scoring key warns",
+			data: `version: 1
+scoring:
+  churn_max_lines_30d: 1000
+  unknown_scoring_key: true
+`,
+			wantWarnings: 1,
+		},
+		{
 			name: "unknown owners key warns",
 			data: `version: 1
 owners:
@@ -127,8 +136,10 @@ ownership:
   max_author_count_90d: -1
 coverage:
   min_package_coverage: 101
+scoring:
+  complexity_max_loc: 0
 `,
-			wantWarnings: 2,
+			wantWarnings: 3,
 		},
 		{
 			name: "invalid suppression expiry warns",
@@ -229,6 +240,9 @@ func TestRulePackResolution(t *testing.T) {
   max_author_count_90d: 8
 coverage:
   min_package_coverage: 70
+scoring:
+  churn_max_lines_30d: 2000
+  complexity_max_loc: 2000
 boundaries:
   - name: shared
     from: "*/internal/handlers/*"
@@ -239,6 +253,8 @@ rule_packs:
   - path: .faultline/rules/platform.yaml
 coverage:
   min_package_coverage: 85
+scoring:
+  complexity_max_loc: 1500
 boundaries:
   - name: repo
     from: "*/internal/api/*"
@@ -259,6 +275,9 @@ suppressions:
 	}
 	if cfg.Coverage.MinPackageCoverage != 85 {
 		t.Fatalf("base coverage should override pack, got %.2f", cfg.Coverage.MinPackageCoverage)
+	}
+	if cfg.Scoring.ChurnMaxLines30d != 2000 || cfg.Scoring.ComplexityMaxLOC != 1500 {
+		t.Fatalf("scoring merge precedence incorrect: %+v", cfg.Scoring)
 	}
 	if len(cfg.Boundaries) != 2 {
 		t.Fatalf("boundaries = %+v", cfg.Boundaries)

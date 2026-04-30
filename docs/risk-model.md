@@ -62,6 +62,19 @@ The initial model is intentionally simple and should be treated as a prioritizat
 
 These thresholds are stable and explainable, but they are not yet statistically calibrated. Large refactors, generated-code churn, or repos without coverage profiles can shift many packages upward at once. Enterprise deployments should compare scores within the same repository and CI setup before using absolute thresholds as hard gates.
 
+The calibration constants are configurable under `scoring` in `faultline.yaml` or imported rule packs. Defaults are:
+
+```yaml
+scoring:
+  churn_max_lines_30d: 1000
+  complexity_max_loc: 1000
+  complexity_max_imports: 20
+  complexity_max_files: 30
+  dependency_centrality_max_reverse_imports: 10
+```
+
+Changing these values changes normalized component scores while preserving the same weighted formula. Treat those changes as policy changes: review them, commit them, and use `faultline config explain` or `faultline config docs` to make the resolved calibration auditable.
+
 ## Monorepos And Workspaces
 
 Faultline discovers multiple `go.mod` files under the repository root and detects a root `go.work` when present. Reports include module path, module root, `go.mod` path, go.work inclusion, and whether the module was selected for a scan.

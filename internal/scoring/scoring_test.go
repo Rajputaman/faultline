@@ -189,6 +189,49 @@ func TestScorePackageGoldenValues(t *testing.T) {
 	}
 }
 
+func TestScorePackageUsesConfigurableCalibrationThresholds(t *testing.T) {
+	fullCoverage := 100.0
+	pkg := report.PackageRisk{
+		Churn30d:           1000,
+		CoveragePct:        &fullCoverage,
+		LOC:                1000,
+		ImportCount:        20,
+		FileCount:          30,
+		GeneratedFileCount: 0,
+		ReverseImportCount: 10,
+	}
+
+	defaultScore := ScorePackage(pkg, Options{
+		Config:           policy.DefaultConfig(),
+		CoverageSupplied: true,
+		CoverageUsable:   true,
+		GitAvailable:     true,
+	})
+	if defaultScore.RiskScore != 60 {
+		t.Fatalf("default RiskScore = %.2f, want 60.00", defaultScore.RiskScore)
+	}
+
+	cfg := policy.DefaultConfig()
+	cfg.Scoring.ChurnMaxLines30d = 2000
+	cfg.Scoring.ComplexityMaxLOC = 2000
+	cfg.Scoring.ComplexityMaxImports = 40
+	cfg.Scoring.ComplexityMaxFiles = 60
+	cfg.Scoring.DependencyCentralityMaxReverseImportCount = 20
+
+	tunedScore := ScorePackage(pkg, Options{
+		Config:           cfg,
+		CoverageSupplied: true,
+		CoverageUsable:   true,
+		GitAvailable:     true,
+	})
+	if tunedScore.RiskScore != 30 {
+		t.Fatalf("tuned RiskScore = %.2f, want 30.00", tunedScore.RiskScore)
+	}
+	if tunedScore.Breakdown.ChurnScore != 50 || tunedScore.Breakdown.ComplexityScore != 50 || tunedScore.Breakdown.DependencyCentralityScore != 50 {
+		t.Fatalf("tuned breakdown = %+v, want churn/complexity/centrality at 50", tunedScore.Breakdown)
+	}
+}
+
 func hasFinding(findings []report.Finding, id string) bool {
 	for _, f := range findings {
 		if f.ID == id {

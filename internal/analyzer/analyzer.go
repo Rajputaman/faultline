@@ -105,6 +105,7 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 	}
 
 	reverseImports := computeReverseImports(loaded)
+	coverageResolver := newCoverageResolver(coverageByPackage, loaded, repoPath)
 	multiModule := len(fmodule.Selected(s.Modules)) > 1
 	risks := make([]report.PackageRisk, 0, len(loaded))
 	for _, pkg := range loaded {
@@ -147,10 +148,14 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 			}
 		}
 
-		if pct, ok := coverageForPackage(coverageByPackage, pkg.ImportPath, pkg.Dir); ok {
+		if match, ok := coverageResolver.ForPackage(pkg); ok {
+			pct := match.Pct
 			v := round2(pct)
 			pr.CoveragePct = &v
 			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_pct", Value: fmt.Sprintf("%.2f", v), Source: "coverage"})
+			if match.Key != "" {
+				pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_key", Value: match.Key, Source: "coverage"})
+			}
 		} else if s.CoveragePath != "" && coverageErr == "" {
 			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage", Value: "unknown for package", Source: "coverage"})
 		}
@@ -577,23 +582,6 @@ func matchesExclude(repoPath, dir string, patterns []string) bool {
 		}
 	}
 	return false
-}
-
-func coverageForPackage(values map[string]float64, importPath, dir string) (float64, bool) {
-	if len(values) == 0 {
-		return 0, false
-	}
-	if v, ok := values[importPath]; ok {
-		return v, true
-	}
-	dirSlash := filepath.ToSlash(dir)
-	for pkg, v := range values {
-		pkgSlash := filepath.ToSlash(pkg)
-		if pkg == importPath || pkgSlash == dirSlash || strings.HasSuffix(importPath, "/"+pkgSlash) {
-			return v, true
-		}
-	}
-	return 0, false
 }
 
 func round2(v float64) float64 {

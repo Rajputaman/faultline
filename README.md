@@ -257,7 +257,7 @@ faultline config docs --config faultline.yaml --format markdown --out faultline-
 faultline config resolved --config faultline.yaml --format yaml --out resolved.yaml
 ```
 
-Validation checks supported config version, boundary rule shape, resolved `suppression_policy`, suppression required fields and expiry dates, ownership alias/module owner shape, threshold ranges, and unknown keys at the top level and under `ownership`, `owners`, `coverage`, `boundaries[]`, `suppression_policy`, and `suppressions[]`. Unknown keys are warnings by default. With `--strict`, ordinary validation warnings return exit code `1`; enforcement warnings such as nested unknown keys or suppression policy violations, parse errors, and unsupported versions return exit code `2`.
+Validation checks supported config version, boundary rule shape, resolved `suppression_policy`, suppression required fields and expiry dates, ownership alias/module owner shape, threshold ranges, and unknown keys at the top level and under `ownership`, `owners`, `coverage`, `scoring`, `boundaries[]`, `suppression_policy`, and `suppressions[]`. Unknown keys are warnings by default. With `--strict`, ordinary validation warnings return exit code `1`; enforcement warnings such as nested unknown keys or suppression policy violations, parse errors, and unsupported versions return exit code `2`.
 
 `config schema` generates the supported schema with field types, required status, defaults, validation rules, and examples. `config docs` generates human-readable governance documentation from a specific `faultline.yaml`, including grouped suppressions and a strict-mode readiness summary.
 
@@ -302,7 +302,7 @@ suppressions:
     expires: "2026-06-30"
 ```
 
-Rule packs may define `ownership`, `owners`, `coverage`, `boundaries`, and `suppression_policy`. Suppressions are intentionally repo-local and are ignored with a warning if placed inside a rule pack.
+Rule packs may define `ownership`, `owners`, `coverage`, `scoring`, `boundaries`, and `suppression_policy`. Suppressions are intentionally repo-local and are ignored with a warning if placed inside a rule pack.
 
 Rule-pack suppression policy is enforced against repo-local suppressions after all imports are resolved:
 
@@ -408,6 +408,17 @@ boundaries:
 ```
 
 Boundary rules match package import paths and package directories. A violation emits `FL-BND-001` with the importing package, denied import, rule name, and matched policy evidence.
+
+Scoring calibration can be tuned in repo-local config or shared rule packs. Defaults preserve Faultline's initial risk model.
+
+```yaml
+scoring:
+  churn_max_lines_30d: 1000
+  complexity_max_loc: 1000
+  complexity_max_imports: 20
+  complexity_max_files: 30
+  dependency_centrality_max_reverse_imports: 10
+```
 
 Suppressions are waivers, not deletions. Suppressed findings remain in package findings and in the top-level suppression audit, but they do not trigger `--fail-on`.
 

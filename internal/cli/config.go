@@ -29,6 +29,7 @@ type configExplanation struct {
 	Ownership         policy.OwnershipConfig   `json:"ownership"`
 	Owners            policy.OwnersConfig      `json:"owners,omitempty"`
 	Coverage          policy.CoverageConfig    `json:"coverage"`
+	Scoring           policy.ScoringConfig     `json:"scoring"`
 	SuppressionPolicy policy.SuppressionPolicy `json:"suppression_policy"`
 	Boundaries        []policy.BoundaryRule    `json:"boundaries,omitempty"`
 	Suppressions      []suppressionStatus      `json:"suppressions,omitempty"`
@@ -86,6 +87,7 @@ type configDocs struct {
 	Ownership          policy.OwnershipConfig   `json:"ownership"`
 	Owners             policy.OwnersConfig      `json:"owners,omitempty"`
 	Coverage           policy.CoverageConfig    `json:"coverage"`
+	Scoring            policy.ScoringConfig     `json:"scoring"`
 	SuppressionPolicy  policy.SuppressionPolicy `json:"suppression_policy"`
 	Boundaries         []policy.BoundaryRule    `json:"boundaries,omitempty"`
 	Active             []suppressionStatus      `json:"active_suppressions,omitempty"`
@@ -411,6 +413,7 @@ func explainConfig(path string, cfg policy.Config, validation policy.ValidationR
 		Ownership:         cfg.Ownership,
 		Owners:            cfg.Owners,
 		Coverage:          cfg.Coverage,
+		Scoring:           policy.NormalizeScoringConfig(cfg.Scoring),
 		SuppressionPolicy: cfg.SuppressionPolicy,
 		Boundaries:        append([]policy.BoundaryRule{}, cfg.Boundaries...),
 		Suppressions:      suppressionStatuses(cfg.Suppressions, cfg.SuppressionPolicy, now),
@@ -451,6 +454,13 @@ func renderConfigExplanationMarkdown(expl configExplanation) string {
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Coverage")
 	fmt.Fprintf(&b, "- Minimum package coverage: `%.2f`\n", expl.Coverage.MinPackageCoverage)
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "## Scoring Calibration")
+	fmt.Fprintf(&b, "- Churn max lines in 30 days: `%d`\n", expl.Scoring.ChurnMaxLines30d)
+	fmt.Fprintf(&b, "- Complexity max LOC: `%d`\n", expl.Scoring.ComplexityMaxLOC)
+	fmt.Fprintf(&b, "- Complexity max imports: `%d`\n", expl.Scoring.ComplexityMaxImports)
+	fmt.Fprintf(&b, "- Complexity max files: `%d`\n", expl.Scoring.ComplexityMaxFiles)
+	fmt.Fprintf(&b, "- Dependency centrality max reverse imports: `%d`\n", expl.Scoring.DependencyCentralityMaxReverseImportCount)
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Suppression Policy")
 	fmt.Fprintf(&b, "- Require owner: `%v`\n", expl.SuppressionPolicy.RequireOwner)
@@ -540,6 +550,17 @@ func buildConfigSchema() configSchema {
 				},
 			},
 			{
+				Name:        "scoring",
+				Description: "Calibration constants for normalized risk score components.",
+				Fields: []schemaField{
+					{Path: "scoring.churn_max_lines_30d", Type: "integer", Default: "1000", Validation: []string{"must be greater than zero"}, Description: "Added plus deleted lines in 30 days that maps to a 100 churn component score."},
+					{Path: "scoring.complexity_max_loc", Type: "integer", Default: "1000", Validation: []string{"must be greater than zero"}, Description: "Non-generated package LOC that maps to a 100 LOC complexity subcomponent."},
+					{Path: "scoring.complexity_max_imports", Type: "integer", Default: "20", Validation: []string{"must be greater than zero"}, Description: "Direct non-standard imports that map to a 100 import complexity subcomponent."},
+					{Path: "scoring.complexity_max_files", Type: "integer", Default: "30", Validation: []string{"must be greater than zero"}, Description: "Non-generated files that map to a 100 file-count complexity subcomponent."},
+					{Path: "scoring.dependency_centrality_max_reverse_imports", Type: "integer", Default: "10", Validation: []string{"must be greater than zero"}, Description: "Reverse imports that map to a 100 dependency centrality component score."},
+				},
+			},
+			{
 				Name:        "suppression_policy",
 				Description: "Default governance expectations for repo-local suppressions.",
 				Fields: []schemaField{
@@ -593,6 +614,12 @@ owners:
       owner: "@service-a-team"
 coverage:
   min_package_coverage: 60
+scoring:
+  churn_max_lines_30d: 1000
+  complexity_max_loc: 1000
+  complexity_max_imports: 20
+  complexity_max_files: 30
+  dependency_centrality_max_reverse_imports: 10
 suppression_policy:
   require_owner: true
   require_reason: true
@@ -653,6 +680,7 @@ func buildConfigDocs(path string, cfg policy.Config, validation policy.Validatio
 		Ownership:          cfg.Ownership,
 		Owners:             cfg.Owners,
 		Coverage:           cfg.Coverage,
+		Scoring:            policy.NormalizeScoringConfig(cfg.Scoring),
 		SuppressionPolicy:  cfg.SuppressionPolicy,
 		Boundaries:         append([]policy.BoundaryRule{}, cfg.Boundaries...),
 		Issues:             append([]policy.ValidationIssue{}, validation.Issues...),
@@ -723,6 +751,13 @@ func renderConfigDocsMarkdown(docs configDocs) string {
 	fmt.Fprintln(&b, "## Coverage Thresholds")
 	fmt.Fprintf(&b, "- Minimum package coverage: `%.2f`\n", docs.Coverage.MinPackageCoverage)
 	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "## Scoring Calibration")
+	fmt.Fprintf(&b, "- Churn max lines in 30 days: `%d`\n", docs.Scoring.ChurnMaxLines30d)
+	fmt.Fprintf(&b, "- Complexity max LOC: `%d`\n", docs.Scoring.ComplexityMaxLOC)
+	fmt.Fprintf(&b, "- Complexity max imports: `%d`\n", docs.Scoring.ComplexityMaxImports)
+	fmt.Fprintf(&b, "- Complexity max files: `%d`\n", docs.Scoring.ComplexityMaxFiles)
+	fmt.Fprintf(&b, "- Dependency centrality max reverse imports: `%d`\n", docs.Scoring.DependencyCentralityMaxReverseImportCount)
+	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Suppression Policy")
 	fmt.Fprintf(&b, "- Require owner: `%v`\n", docs.SuppressionPolicy.RequireOwner)
 	fmt.Fprintf(&b, "- Require reason: `%v`\n", docs.SuppressionPolicy.RequireReason)
@@ -786,6 +821,7 @@ var configDocsHTML = template.Must(template.New("config-docs").Funcs(template.Fu
 {{if .RulePacks}}<h2>Rule Packs</h2><table><thead><tr><th>Path</th><th>Imported</th><th>Content Hash</th></tr></thead><tbody>{{range .RulePacks}}<tr><td class="mono">{{.Path}}</td><td>{{.Imported}}</td><td class="mono">{{.ContentHash}}</td></tr>{{end}}</tbody></table>{{end}}
 <h2>Ownership Rules</h2><ul><li>Require CODEOWNERS: <span class="mono">{{.Ownership.RequireCodeowners}}</span></li><li>Max authors in 90 days: <span class="mono">{{.Ownership.MaxAuthorCount90d}}</span></li></ul>
 <h2>Coverage Thresholds</h2><p>Minimum package coverage: <span class="mono">{{printf "%.2f" .Coverage.MinPackageCoverage}}</span></p>
+<h2>Scoring Calibration</h2><ul><li>Churn max lines in 30 days: <span class="mono">{{.Scoring.ChurnMaxLines30d}}</span></li><li>Complexity max LOC: <span class="mono">{{.Scoring.ComplexityMaxLOC}}</span></li><li>Complexity max imports: <span class="mono">{{.Scoring.ComplexityMaxImports}}</span></li><li>Complexity max files: <span class="mono">{{.Scoring.ComplexityMaxFiles}}</span></li><li>Dependency centrality max reverse imports: <span class="mono">{{.Scoring.DependencyCentralityMaxReverseImportCount}}</span></li></ul>
 <h2>Suppression Policy</h2><ul><li>Require owner: <span class="mono">{{.SuppressionPolicy.RequireOwner}}</span></li><li>Require reason: <span class="mono">{{.SuppressionPolicy.RequireReason}}</span></li><li>Require expiry: <span class="mono">{{.SuppressionPolicy.RequireExpires}}</span></li><li>Maximum waiver duration: <span class="mono">{{.SuppressionPolicy.MaxDays}}</span> days</li></ul>
 <h2>Boundary Rules</h2>{{if .Boundaries}}<table><thead><tr><th>Name</th><th>From</th><th>Deny</th><th>Except</th></tr></thead><tbody>{{range .Boundaries}}<tr><td>{{.Name}}</td><td class="mono">{{.From}}</td><td class="mono">{{join .Deny ", "}}</td><td class="mono">{{join .Except ", "}}</td></tr>{{end}}</tbody></table>{{else}}<p>No boundary rules configured.</p>{{end}}
 <h2>Active Suppressions</h2>{{template "supps" .Active}}

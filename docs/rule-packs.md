@@ -35,6 +35,13 @@ owners:
 coverage:
   min_package_coverage: 70
 
+scoring:
+  churn_max_lines_30d: 1500
+  complexity_max_loc: 2500
+  complexity_max_imports: 30
+  complexity_max_files: 50
+  dependency_centrality_max_reverse_imports: 15
+
 boundaries:
   - name: handlers-must-not-import-storage
     from: "*/internal/handlers/*"
@@ -72,7 +79,7 @@ Faultline resolves policy deterministically:
 
 1. Start with Faultline defaults.
 2. Apply rule packs in listed order.
-3. Later rule packs override earlier rule packs for scalar settings, owner aliases, and module owner entries.
+3. Later rule packs override earlier rule packs for scalar settings, scoring calibration, owner aliases, and module owner entries.
 4. Apply repo-local `faultline.yaml` overrides.
 5. Append boundaries and de-duplicate by boundary `name`.
 6. Apply repo-local suppressions after full policy resolution.
@@ -83,7 +90,7 @@ For duplicate boundary names:
 - Non-identical duplicate rules emit a warning.
 - The later rule wins, so repo-local boundaries override rule-pack boundaries with the same name.
 
-Owner aliases and module owner entries are map-like settings. Later rule packs override earlier entries with the same key, and repo-local `faultline.yaml` overrides imported entries. Suppressions remain repo-local even when owner policy comes from a rule pack.
+Owner aliases and module owner entries are map-like settings. Later rule packs override earlier entries with the same key, and repo-local `faultline.yaml` overrides imported entries. Scoring calibration is scalar policy and should be reviewed like any other enforcement threshold. Suppressions remain repo-local even when owner policy comes from a rule pack.
 
 ## Auditability
 

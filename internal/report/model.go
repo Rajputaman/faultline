@@ -201,11 +201,16 @@ type ConfigRulePack struct {
 
 // ConfigSummary records the policy inputs that affected scoring.
 type ConfigSummary struct {
-	OwnershipRequireCodeowners bool    `json:"ownership_require_codeowners"`
-	OwnershipMaxAuthorCount90d int     `json:"ownership_max_author_count_90d"`
-	CoverageMinPackageCoverage float64 `json:"coverage_min_package_coverage"`
-	BoundaryRuleCount          int     `json:"boundary_rule_count"`
-	SuppressionCount           int     `json:"suppression_count"`
+	OwnershipRequireCodeowners                   bool    `json:"ownership_require_codeowners"`
+	OwnershipMaxAuthorCount90d                   int     `json:"ownership_max_author_count_90d"`
+	CoverageMinPackageCoverage                   float64 `json:"coverage_min_package_coverage"`
+	ScoringChurnMaxLines30d                      int     `json:"scoring_churn_max_lines_30d"`
+	ScoringComplexityMaxLOC                      int     `json:"scoring_complexity_max_loc"`
+	ScoringComplexityMaxImports                  int     `json:"scoring_complexity_max_imports"`
+	ScoringComplexityMaxFiles                    int     `json:"scoring_complexity_max_files"`
+	ScoringDependencyCentralityMaxReverseImports int     `json:"scoring_dependency_centrality_max_reverse_imports"`
+	BoundaryRuleCount                            int     `json:"boundary_rule_count"`
+	SuppressionCount                             int     `json:"suppression_count"`
 }
 
 // Report is the top-level output of a faultline scan.
