@@ -1,6 +1,6 @@
 # Faultline Risk Model
 
-Faultline's current scoring version is `faultline-risk-v0.2`. Scores are deterministic and reported on a 0-100 scale.
+Faultline's current scoring version is `faultline-risk-v0.2`. Scores are reported on a 0-100 scale. The arithmetic is deterministic for a fixed scan input, but some inputs are time-windowed. In particular, churn and author counts are read from `git log --since="30 days ago"` and `git log --since="90 days ago"`, so the same repository can legitimately score differently as commits age out of those windows.
 
 ```text
 risk_score =
@@ -51,6 +51,16 @@ Dependency risk is structural module-governance analysis, not CVE scanning. Faul
 Faultline does not call the Go module proxy, run `go get`, mutate `go.mod` or `go.sum`, or query vulnerability databases during default dependency analysis. The optional `--govulncheck auto|/path/to/govulncheck` mode runs an external `govulncheck` binary only when explicitly requested. That output is labeled as external tool output and should be governed separately from Faultline's structural dependency findings.
 
 Dependency findings are currently top-level report findings and are not folded into the package risk score. This avoids mixing module governance signals with package-local structural risk until enough real repository data exists to tune weights responsibly.
+
+## Calibration Notes
+
+The initial model is intentionally simple and should be treated as a prioritization heuristic. Several constants are deliberately conservative until Faultline has real-world calibration data:
+
+- Churn reaches the maximum component score at 1,000 added plus deleted lines in the last 30 days.
+- LOC complexity reaches its maximum LOC subcomponent at 1,000 non-generated lines.
+- Unknown coverage is scored as 50 on the coverage-gap component. Because coverage has a 0.20 weight, a package with no other risk signals receives 10 risk-score points when coverage is unknown. This is not the same as assigning 0% coverage; it is a bias toward making missing coverage visible without making it a failure by itself.
+
+These thresholds are stable and explainable, but they are not yet statistically calibrated. Large refactors, generated-code churn, or repos without coverage profiles can shift many packages upward at once. Enterprise deployments should compare scores within the same repository and CI setup before using absolute thresholds as hard gates.
 
 ## Monorepos And Workspaces
 

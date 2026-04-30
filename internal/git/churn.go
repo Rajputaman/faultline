@@ -67,14 +67,7 @@ func PackageAuthorCounts(ctx context.Context, repoRoot, pkgDir string) (map[stri
 		return map[string]int{}, nil
 	}
 
-	counts := make(map[string]int)
-	for _, line := range strings.Split(out, "\n") {
-		email := strings.TrimSpace(line)
-		if email != "" {
-			counts[email]++
-		}
-	}
-	return counts, nil
+	return parseAuthorCounts(out), nil
 }
 
 // countChangedLines counts added+deleted lines in the given directory since the
@@ -94,6 +87,10 @@ func countChangedLines(ctx context.Context, repoRoot, relDir, since string) (int
 		return 0, nil
 	}
 
+	return parseNumstatChurn(out), nil
+}
+
+func parseNumstatChurn(out string) int {
 	total := 0
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
@@ -114,7 +111,7 @@ func countChangedLines(ctx context.Context, repoRoot, relDir, since string) (int
 		}
 		total += added + deleted
 	}
-	return total, nil
+	return total
 }
 
 // countAuthors counts distinct author email addresses in the given directory
@@ -132,12 +129,16 @@ func countAuthors(ctx context.Context, repoRoot, relDir, since string) (int, err
 		return 0, nil
 	}
 
-	seen := make(map[string]struct{})
+	return len(parseAuthorCounts(out)), nil
+}
+
+func parseAuthorCounts(out string) map[string]int {
+	counts := make(map[string]int)
 	for _, line := range strings.Split(out, "\n") {
 		email := strings.TrimSpace(line)
 		if email != "" {
-			seen[email] = struct{}{}
+			counts[email]++
 		}
 	}
-	return len(seen), nil
+	return counts
 }

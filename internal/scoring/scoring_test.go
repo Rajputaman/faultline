@@ -94,6 +94,101 @@ func TestScorePackage(t *testing.T) {
 	}
 }
 
+func TestScorePackageGoldenValues(t *testing.T) {
+	fullCoverage := 100.0
+	noCoverage := 0.0
+
+	tests := []struct {
+		name          string
+		pkg           report.PackageRisk
+		opts          Options
+		wantRisk      float64
+		wantBreakdown report.ScoreBreakdown
+	}{
+		{
+			name: "zero signal with known full coverage",
+			pkg: report.PackageRisk{
+				CoveragePct: &fullCoverage,
+			},
+			opts:     Options{CoverageSupplied: true, CoverageUsable: true, GitAvailable: true},
+			wantRisk: 0,
+			wantBreakdown: report.ScoreBreakdown{
+				ChurnScore:                0,
+				CoverageGapScore:          0,
+				ComplexityScore:           0,
+				OwnershipEntropyScore:     0,
+				DependencyCentralityScore: 0,
+			},
+		},
+		{
+			name: "unknown coverage contributes neutral coverage risk",
+			pkg:  report.PackageRisk{},
+			opts: Options{GitAvailable: true},
+			// Unknown coverage intentionally contributes 50 * 0.20 = 10 points.
+			wantRisk: 10,
+			wantBreakdown: report.ScoreBreakdown{
+				ChurnScore:                0,
+				CoverageGapScore:          50,
+				ComplexityScore:           0,
+				OwnershipEntropyScore:     0,
+				DependencyCentralityScore: 0,
+			},
+		},
+		{
+			name: "mixed high churn low coverage package",
+			pkg: report.PackageRisk{
+				Churn30d:    800,
+				CoveragePct: &noCoverage,
+				LOC:         500,
+				ImportCount: 10,
+			},
+			opts:     Options{CoverageSupplied: true, CoverageUsable: true, GitAvailable: true},
+			wantRisk: 48,
+			wantBreakdown: report.ScoreBreakdown{
+				ChurnScore:                80,
+				CoverageGapScore:          100,
+				ComplexityScore:           40,
+				OwnershipEntropyScore:     0,
+				DependencyCentralityScore: 0,
+			},
+		},
+		{
+			name: "max signal package caps at 100",
+			pkg: report.PackageRisk{
+				Churn30d:           2000,
+				CoveragePct:        &noCoverage,
+				LOC:                2000,
+				ImportCount:        40,
+				FileCount:          60,
+				GeneratedFileCount: 0,
+				OwnershipEntropy:   2,
+				ReverseImportCount: 20,
+			},
+			opts:     Options{CoverageSupplied: true, CoverageUsable: true, GitAvailable: true},
+			wantRisk: 100,
+			wantBreakdown: report.ScoreBreakdown{
+				ChurnScore:                100,
+				CoverageGapScore:          100,
+				ComplexityScore:           100,
+				OwnershipEntropyScore:     100,
+				DependencyCentralityScore: 100,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ScorePackage(tt.pkg, tt.opts)
+			if got.RiskScore != tt.wantRisk {
+				t.Fatalf("RiskScore = %.2f, want %.2f", got.RiskScore, tt.wantRisk)
+			}
+			if got.Breakdown != tt.wantBreakdown {
+				t.Fatalf("Breakdown = %+v, want %+v", got.Breakdown, tt.wantBreakdown)
+			}
+		})
+	}
+}
+
 func hasFinding(findings []report.Finding, id string) bool {
 	for _, f := range findings {
 		if f.ID == id {
