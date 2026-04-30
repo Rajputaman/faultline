@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.26-alpine
+
+ARG VERSION=0.1.0-dev
+ARG TARGETARCH
+
+LABEL org.opencontainers.image.source="https://github.com/faultline-go/faultline" \
+      org.opencontainers.image.description="Faultline structural risk analysis CLI for Go codebases" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${VERSION}"
+
+RUN apk add --no-cache ca-certificates git
+COPY linux/${TARGETARCH}/faultline /usr/local/bin/faultline
+
+WORKDIR /workspace
+ENTRYPOINT ["faultline"]
+CMD ["version"]

@@ -77,7 +77,7 @@ dockers_v2:
   - id: faultline
     ids:
       - faultline
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     images:
       - ghcr.io/faultline-go/faultline
     tags:
