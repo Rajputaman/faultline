@@ -1,7 +1,7 @@
 .faultline/
 bin/
 dist/
-faultline
+/faultline
 faultline-report.html
 faultline-report.json
 faultline.sarif
