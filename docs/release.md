@@ -66,22 +66,21 @@ signatures, and attestations are available so users see a complete asset set.
 
 ## Homebrew
 
-GoReleaser is configured to generate a Homebrew formula named `faultline` for the tap repo `faultline-go/homebrew-tap`.
+GoReleaser is configured to generate a Homebrew cask named `faultline` for the tap repo `faultline-go/homebrew-tap`. Faultline publishes through `homebrew_casks`, which is the current GoReleaser path for prebuilt CLI binaries.
 
-The formula includes:
+The cask includes:
 
 - description and homepage
 - Apache-2.0 license
-- install block for the `faultline` binary
-- test block running `faultline version`
+- binary stanza for the `faultline` executable
 
-Tap publishing is token-gated. Set `HOMEBREW_TAP_GITHUB_TOKEN` in the release workflow environment to allow GoReleaser to push formula updates. Without that token, formula upload is skipped.
+Tap publishing is token-gated. Set `HOMEBREW_TAP_GITHUB_TOKEN` in the release workflow environment to allow GoReleaser to push cask updates. Without that token, cask upload is skipped.
 
 Expected user install path after the tap exists:
 
 ```sh
 brew tap faultline-go/tap
-brew install faultline
+brew install --cask faultline
 faultline version
 ```
 

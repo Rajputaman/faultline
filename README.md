@@ -59,7 +59,7 @@ Install with Homebrew after the tap is published:
 
 ```sh
 brew tap faultline-go/tap
-brew install faultline
+brew install --cask faultline
 faultline version
 ```
 
@@ -369,12 +369,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
       - run: go install github.com/faultline-go/faultline/cmd/faultline@latest
       - run: faultline baseline check --baseline faultline-baseline.json --fail-on-new high --fail-on-risk-delta 10 --format markdown --out faultline-baseline-check.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: faultline-baseline-check
@@ -535,7 +535,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
       - run: go test ./... -coverprofile=coverage.out
@@ -544,7 +544,7 @@ jobs:
       - run: go run ./cmd/faultline config docs --config faultline.yaml --format markdown --out faultline-policy.md
       - run: go run ./cmd/faultline suppressions audit --config faultline.yaml --format markdown --out faultline-suppressions.md
       - run: go run ./cmd/faultline scan ./... --coverage coverage.out --config faultline.yaml --strict-config --format json --out faultline-report.json --fail-on high
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: faultline-report
@@ -575,7 +575,7 @@ jobs:
             -w /workspace \
             ghcr.io/faultline-go/faultline:latest \
             scan ./... --format json --out faultline-report.json --fail-on high
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: faultline-report
@@ -603,7 +603,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
 
@@ -681,7 +681,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
 
@@ -696,7 +696,7 @@ jobs:
         with:
           sarif_file: faultline-pr.sarif
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: faultline-pr-review

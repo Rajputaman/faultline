@@ -52,10 +52,12 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
-brews:
+homebrew_casks:
   - name: faultline
     ids:
       - default
+    binaries:
+      - faultline
     repository:
       owner: faultline-go
       name: homebrew-tap
@@ -66,11 +68,8 @@ brews:
     homepage: https://github.com/faultline-go/faultline
     description: Structural risk analysis for Go codebases
     license: Apache-2.0
-    url_template: "https://github.com/faultline-go/faultline/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    install: |
-      bin.install "faultline"
-    test: |
-      system "#{bin}/faultline", "version"
+    url:
+      template: "https://github.com/faultline-go/faultline/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     skip_upload: "{{ if index .Env \"HOMEBREW_TAP_GITHUB_TOKEN\" }}false{{ else }}true{{ end }}"
 
 dockers_v2:
