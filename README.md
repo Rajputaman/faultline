@@ -125,7 +125,13 @@ For local development:
 ```sh
 make build
 bin/faultline version
+make quality
 ```
+
+`make quality` runs the repository's parity gate for formatting, module tidy
+state, tests, `golangci-lint`, and the Go team's `deadcode` analyzer. See
+[docs/tool-parity.md](docs/tool-parity.md) for the full mapping between
+Faultline's native signals and delegated Go static-analysis tools.
 
 ## Contributing and Security
 

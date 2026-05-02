@@ -7,7 +7,7 @@ DIST_DIR := dist
 LDFLAGS := -s -w -X $(MODULE)/internal/version.Version=$(VERSION) -X $(MODULE)/internal/version.Commit=$(COMMIT) -X $(MODULE)/internal/version.BuildDate=$(DATE)
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: build build-all checksums sbom sign-checksums release-dry-run test lint fmt scan-testdata clean
+.PHONY: build build-all checksums sbom sign-checksums release-dry-run test lint deadcode tidy-check quality fmt scan-testdata clean
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/faultline
@@ -48,7 +48,18 @@ test:
 	go test ./...
 
 lint:
-	go vet ./...
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint is required: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4"; exit 1; }
+	golangci-lint run
+
+deadcode:
+	@command -v deadcode >/dev/null 2>&1 || { echo "deadcode is required: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; }
+	bash scripts/deadcode-check.sh
+
+tidy-check:
+	go mod tidy
+	git diff --exit-code -- go.mod go.sum
+
+quality: fmt tidy-check test lint deadcode
 
 fmt:
 	gofmt -w $$(find . -name '*.go' -not -path './vendor/*' -not -path './third_party/*')

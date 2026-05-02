@@ -1,0 +1,54 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - cyclop
+    - depguard
+    - dupl
+    - gocognit
+    - gocyclo
+    - gomoddirectives
+    - gomodguard
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+  settings:
+    cyclop:
+      max-complexity: 40
+      package-average: 0
+    depguard:
+      rules:
+        main:
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/faultline-go/faultline
+            - github.com/spf13/cobra
+            - golang.org/x
+            - gopkg.in/yaml.v3
+            - modernc.org/sqlite
+    dupl:
+      threshold: 220
+    gocognit:
+      min-complexity: 65
+    gocyclo:
+      min-complexity: 40
+    gomodguard:
+      allowed:
+        domains:
+          - github.com
+          - golang.org
+          - gopkg.in
+          - modernc.org
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

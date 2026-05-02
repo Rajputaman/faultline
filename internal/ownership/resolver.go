@@ -211,26 +211,6 @@ func selectOwner(candidates []report.OwnerCandidate) (string, string, float64) {
 	return best.Owner, best.Source, best.Confidence
 }
 
-func sortCandidates(candidates []report.OwnerCandidate) {
-	precedence := map[string]int{
-		SourceModuleOwner: 0,
-		SourceCodeowners:  1,
-		SourceGitAlias:    2,
-		SourceGitAuthor:   2,
-	}
-	sort.SliceStable(candidates, func(i, j int) bool {
-		li := precedence[candidates[i].Source]
-		lj := precedence[candidates[j].Source]
-		if li != lj {
-			return li < lj
-		}
-		if candidates[i].Owner != candidates[j].Owner {
-			return candidates[i].Owner < candidates[j].Owner
-		}
-		return candidates[i].Detail < candidates[j].Detail
-	})
-}
-
 func sameIdentity(left, right string) bool {
 	left = strings.TrimSpace(left)
 	right = strings.TrimSpace(right)

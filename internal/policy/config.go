@@ -369,9 +369,7 @@ func ValidateConfig(path string, cfg Config, unknown []ValidationIssue, configHa
 	if cfg.Coverage.MinPackageCoverage < 0 || cfg.Coverage.MinPackageCoverage > 100 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "coverage.min_package_coverage", Message: "must be between 0 and 100"})
 	}
-	for _, issue := range validateScoringConfigIssues(cfg.Scoring) {
-		report.Issues = append(report.Issues, issue)
-	}
+	report.Issues = append(report.Issues, validateScoringConfigIssues(cfg.Scoring)...)
 	if cfg.SuppressionPolicy.MaxDays < 0 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "suppression_policy.max_days", Message: "must be zero or greater"})
 	}
@@ -381,14 +379,10 @@ func ValidateConfig(path string, cfg Config, unknown []ValidationIssue, configHa
 		}
 	}
 	for i, rule := range cfg.Boundaries {
-		for _, issue := range validateBoundaryRuleIssues(rule, fmt.Sprintf("boundaries[%d]", i)) {
-			report.Issues = append(report.Issues, issue)
-		}
+		report.Issues = append(report.Issues, validateBoundaryRuleIssues(rule, fmt.Sprintf("boundaries[%d]", i))...)
 	}
 	for i, suppression := range cfg.Suppressions {
-		for _, issue := range validateSuppressionIssues(suppression, cfg.SuppressionPolicy, fmt.Sprintf("suppressions[%d]", i), now) {
-			report.Issues = append(report.Issues, issue)
-		}
+		report.Issues = append(report.Issues, validateSuppressionIssues(suppression, cfg.SuppressionPolicy, fmt.Sprintf("suppressions[%d]", i), now)...)
 	}
 	sort.SliceStable(report.Issues, func(i, j int) bool {
 		if report.Issues[i].Level != report.Issues[j].Level {

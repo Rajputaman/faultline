@@ -33,8 +33,25 @@ jobs:
           fi
       - name: Test
         run: go test ./...
+      - name: Go module tidy check
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - name: GolangCI-Lint parity gate
+        if: runner.os == 'Linux'
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.4
       - name: Vet
         run: go vet ./...
+      - name: Dead code parity gate
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          go install golang.org/x/tools/cmd/deadcode@latest
+          bash scripts/deadcode-check.sh
       - name: Build without CGO
         shell: bash
         run: CGO_ENABLED=0 go build ./cmd/faultline
