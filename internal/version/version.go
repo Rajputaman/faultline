@@ -8,7 +8,7 @@ import (
 
 // These are set via -ldflags at build time.
 var (
-	Version   = "0.1.0-dev"
+	Version   = "0.1.0"
 	Commit    = "unknown"
 	BuildDate = "unknown"
 )
@@ -24,7 +24,7 @@ type Info struct {
 
 func Get() Info {
 	return Info{
-		Version:   sane(Version, "0.1.0-dev"),
+		Version:   sane(Version, "0.1.0"),
 		Commit:    sane(Commit, "unknown"),
 		Date:      sane(BuildDate, "unknown"),
 		GoVersion: runtime.Version(),
