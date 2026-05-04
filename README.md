@@ -772,7 +772,7 @@ jobs:
 - Suppressions are implemented as expiring waivers; they do not remove findings from reports.
 - CODEOWNERS matching is approximate.
 - Generated code is counted separately and excluded from LOC complexity by default, but generated-heavy packages still need human interpretation.
-- No GitHub App, remote telemetry, or SaaS upload is implemented yet.
+- GitHub App and hosted upload workflows are on the roadmap; the current OSS scanner is intentionally local-first and source-free.
 
 ## Governance Note
 
