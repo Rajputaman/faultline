@@ -14,6 +14,7 @@ import (
 	"github.com/faultline-go/faultline/internal/report"
 	"github.com/faultline-go/faultline/internal/sarif"
 	"github.com/faultline-go/faultline/internal/storage"
+	fexport "github.com/faultline-go/faultline/pkg/export"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +59,7 @@ func newScanCommand() *cobra.Command {
 			return runScan(cmd, opts, args)
 		},
 	}
-	cmd.Flags().StringVar(&opts.format, "format", "html", "report format: html, json, or sarif")
+	cmd.Flags().StringVar(&opts.format, "format", "html", "report format: html, json, sarif, or snapshot")
 	cmd.Flags().StringVar(&opts.out, "out", "faultline-report.html", "output report path")
 	cmd.Flags().StringVar(&opts.coverage, "coverage", "", "optional Go coverage profile")
 	cmd.Flags().StringVar(&opts.config, "config", "", "optional faultline.yaml path")
@@ -79,8 +80,8 @@ func newScanCommand() *cobra.Command {
 
 func runScan(cmd *cobra.Command, opts scanOptions, patterns []string) error {
 	format := strings.ToLower(strings.TrimSpace(opts.format))
-	if format != "html" && format != "json" && format != "sarif" {
-		return ExitError{Code: 2, Err: fmt.Errorf("unsupported format %q: expected html, json, or sarif", opts.format)}
+	if format != "html" && format != "json" && format != "sarif" && format != "snapshot" {
+		return ExitError{Code: 2, Err: fmt.Errorf("unsupported format %q: expected html, json, sarif, or snapshot", opts.format)}
 	}
 	failOn, err := parseFailOn(opts.failOn)
 	if err != nil {
@@ -110,6 +111,10 @@ func runScan(cmd *cobra.Command, opts scanOptions, patterns []string) error {
 		}
 	case "sarif":
 		if err := sarif.WriteFile(opts.out, rep); err != nil {
+			return ExitError{Code: 2, Err: err}
+		}
+	case "snapshot":
+		if err := writeSnapshotFile(opts.out, rep); err != nil {
 			return ExitError{Code: 2, Err: err}
 		}
 	}
@@ -175,6 +180,12 @@ func buildScanReport(cmd *cobra.Command, opts scanOptions, patterns []string) (*
 	if err != nil {
 		return nil, err
 	}
+	if len(rep.Packages) == 0 {
+		rep.Warnings = appendUniqueWarnings(rep.Warnings, report.Warning{
+			Source:  "scanner",
+			Message: "no Go packages matched; Faultline currently scans Go packages only",
+		})
+	}
 	if opts.strictConfig && hasWarningSource(rep.Warnings, "CODEOWNERS") {
 		return nil, fmt.Errorf("strict config validation failed on CODEOWNERS diagnostics")
 	}
@@ -223,6 +234,25 @@ func buildScanReport(cmd *cobra.Command, opts scanOptions, patterns []string) (*
 	rep.Summary = report.ComputeSummaryWithDependencies(rep.Packages, rep.Warnings, rep.DependencyFindings)
 	rep.Summary.DependencyCount = len(rep.Dependencies)
 	return rep, nil
+}
+
+func writeSnapshotFile(path string, rep *report.Report) error {
+	reportJSON, err := report.MarshalJSON(rep)
+	if err != nil {
+		return err
+	}
+	snapshot, err := fexport.FromReportJSON(reportJSON)
+	if err != nil {
+		return err
+	}
+	data, err := fexport.MarshalJSON(snapshot)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write snapshot %s: %w", path, err)
+	}
+	return nil
 }
 
 func packageImportPaths(rep *report.Report) []string {
