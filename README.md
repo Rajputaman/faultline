@@ -7,7 +7,7 @@
 
 **Local-first structural risk analysis for Go codebases.**
 
-Faultline scans Go repositories and produces explainable package-level risk reports from code structure, git history, ownership, coverage, dependency metadata, and architecture policy inputs. It is designed for teams that need to find technical-debt hotspots before they become incidents.
+Faultline scans Go repositories and produces explainable package-level risk reports from code structure, git history, ownership, coverage, dependency metadata, and architecture policy inputs. It is built for teams that need to find technical-debt hotspots before they become incidents, without sending source code to a hosted service.
 
 ```sh
 go install github.com/faultline-go/faultline/cmd/faultline@latest
@@ -16,7 +16,14 @@ faultline scan ./... --format html --out faultline-report.html
 
 ![Faultline HTML report screenshot](docs/assets/report-screenshot.png)
 
-Faultline is local-first. It does not upload source code, run a server, execute repository scripts, or require runtime network access. Reports can be generated as HTML, JSON, or SARIF for GitHub code scanning.
+Faultline is local-first. It does not upload source code, run a server, execute repository scripts, or require runtime network access. Reports can be generated as HTML, JSON, SARIF for GitHub code scanning, or a metadata-only snapshot for portfolio governance.
+
+## Why Teams Use It
+
+- **Find structural risk early:** combine churn, coverage, ownership, dependencies, centrality, and policy drift into one package-level signal.
+- **Keep analysis explainable:** every score includes evidence so teams can see why a package is risky.
+- **Stay local by default:** scan in a developer shell or CI without uploading source code.
+- **Bridge to governance:** export `faultline.snapshot.v1` metadata for dashboards and audit workflows while keeping code private.
 
 Try a bundled sample:
 
@@ -34,7 +41,7 @@ Faultline OSS is Apache 2.0 licensed. The public project is intended to stay gen
 
 - A local CLI for package-level Go risk reports.
 - A way to surface packages with high churn, low coverage, unclear ownership, high centrality, or generated-code-heavy metrics.
-- A foundation for later GitHub App, deeper policy governance, and optional hosted reporting.
+- A metadata producer for optional hosted governance, audit, and portfolio reporting.
 
 ## What Faultline Is Not
 
@@ -45,11 +52,11 @@ Faultline OSS is Apache 2.0 licensed. The public project is intended to stay gen
 
 ## Open-Core Boundary
 
-Faultline's OSS core includes the scanner engine, local HTML/JSON/SARIF reports, PR markdown output, local baselines, local SQLite history, config governance, suppressions audit, local rule packs, dependency findings, boundary findings, ownership findings, and multi-module scanning.
+Faultline's OSS core includes the scanner engine, local HTML/JSON/SARIF/snapshot reports, PR markdown output, local baselines, local SQLite history, config governance, suppressions audit, local rule packs, dependency findings, boundary findings, ownership findings, and multi-module scanning.
 
 Commercial Faultline products should be additive: multi-repo dashboards, centralized policy packs, suppression approval workflows, SSO/RBAC, Slack/Jira automation, portfolio trends, audit exports, and managed onboarding. The scanner, SARIF, PR markdown, local reports, local trends, baselines, and config policy engine must remain usable without login.
 
-The public integration contract for paid systems is metadata-only. See [docs/open-core.md](docs/open-core.md) and [docs/export-contracts.md](docs/export-contracts.md).
+The public integration contract for paid systems is metadata-only: `faultline scan --format snapshot` emits `faultline.snapshot.v1`, a source-free upload contract. See [docs/open-core.md](docs/open-core.md) and [docs/export-contracts.md](docs/export-contracts.md).
 
 ## Installation
 
@@ -64,8 +71,8 @@ Install from a release archive:
 
 ```sh
 # Pick the archive for your OS and architecture from GitHub Releases.
-curl -L -o faultline.tar.gz https://github.com/faultline-go/faultline/releases/download/vX.Y.Z/faultline_vX.Y.Z_linux_amd64.tar.gz
-curl -L -o checksums.txt https://github.com/faultline-go/faultline/releases/download/vX.Y.Z/checksums.txt
+curl -L -o faultline.tar.gz https://github.com/faultline-go/faultline/releases/download/v0.1.0/faultline_v0.1.0_linux_amd64.tar.gz
+curl -L -o checksums.txt https://github.com/faultline-go/faultline/releases/download/v0.1.0/checksums.txt
 sha256sum --check --ignore-missing checksums.txt
 tar -xzf faultline.tar.gz
 install -m 0755 faultline /usr/local/bin/faultline
@@ -95,6 +102,12 @@ Run a first local scan:
 
 ```sh
 faultline scan ./... --format html --out faultline-report.html
+```
+
+Create a source-free enterprise snapshot:
+
+```sh
+faultline scan ./... --format snapshot --out faultline-snapshot.json
 ```
 
 ## Verifying Releases
@@ -153,7 +166,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance and [SECURITY.m
 faultline scan ./... --format html --out faultline-report.html
 faultline scan ./... --format json --out faultline-report.json
 faultline scan ./... --format sarif --out faultline.sarif
+faultline scan ./... --format snapshot --out faultline-snapshot.json
 ```
+
+Use `--format snapshot` for the metadata-only `faultline.snapshot.v1` upload
+contract. Use `--format json` for the local developer report.
 
 By default, scans are stored locally in `.faultline/faultline.db` so later reports can show risk trends. Disable this with:
 

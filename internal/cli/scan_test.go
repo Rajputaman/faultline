@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +67,79 @@ func TestScanCommandAgainstTestdata(t *testing.T) {
 	}
 	if len(rep.Warnings) == 0 {
 		t.Fatal("expected missing coverage warning")
+	}
+}
+
+func TestScanCommandWritesSnapshot(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	testRepo := filepath.Join(repoRoot, "testdata", "simple-go-module")
+	out := filepath.Join(t.TempDir(), "snapshot.json")
+
+	restore := chdir(t, testRepo)
+	defer restore()
+
+	cmd := NewRootCommand()
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.SetErr(new(bytes.Buffer))
+	cmd.SetArgs([]string{"scan", "./...", "--format", "snapshot", "--out", out, "--no-history"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot struct {
+		SchemaVersion string `json:"schema_version"`
+		Source        struct {
+			RepoFingerprint string `json:"repo_fingerprint"`
+		} `json:"source"`
+		Packages []struct {
+			ImportPath string `json:"import_path"`
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	if snapshot.SchemaVersion != "faultline.snapshot.v1" {
+		t.Fatalf("schema version = %q", snapshot.SchemaVersion)
+	}
+	if snapshot.Source.RepoFingerprint == "" {
+		t.Fatal("expected repo fingerprint")
+	}
+	if len(snapshot.Packages) == 0 {
+		t.Fatal("expected packages in snapshot")
+	}
+}
+
+func TestScanCommandWarnsWhenNoGoPackagesMatch(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"name":"web"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "report.json")
+	restore := chdir(t, repo)
+	defer restore()
+
+	cmd := NewRootCommand()
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.SetErr(new(bytes.Buffer))
+	cmd.SetArgs([]string{"scan", "./...", "--format", "json", "--out", out, "--no-history"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "no Go packages matched") {
+		t.Fatalf("expected no Go packages warning in report: %s", string(data))
 	}
 }
 

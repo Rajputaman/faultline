@@ -72,6 +72,5 @@ if err != nil {
 The preferred operational flow is:
 
 ```sh
-faultline scan ./... --format json --out faultline-report.json
-# convert report JSON to a signed metadata bundle in a future cloud command
+faultline scan ./... --format snapshot --out faultline-snapshot.json
 ```
