@@ -599,39 +599,20 @@ Faultline dependency risk is not CVE scanning. Use `--govulncheck auto` or a pin
 
 Source code and scan data stay in the local environment. Faultline only invokes read-only git commands for history analysis and reads local Go module files for dependency inventory. Default scans do not call module proxies, vulnerability databases, or remote services. Local history stores metrics and finding metadata, not source code. Missing git, shallow clones, missing coverage, unavailable history storage, and unavailable optional `govulncheck` degrade to warnings instead of failing the scan.
 
-## Example GitHub Action
+## GitHub Action
+
+The easiest way to run Faultline in CI:
 
 ```yaml
-name: faultline
-
-on: [pull_request]
-
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.26.x"
-      - run: go test ./... -coverprofile=coverage.out
-      - run: go run ./cmd/faultline config validate --config faultline.yaml --strict
-      - run: go run ./cmd/faultline config resolved --config faultline.yaml --format yaml --out resolved.yaml
-      - run: go run ./cmd/faultline config docs --config faultline.yaml --format markdown --out faultline-policy.md
-      - run: go run ./cmd/faultline suppressions audit --config faultline.yaml --format markdown --out faultline-suppressions.md
-      - run: go run ./cmd/faultline scan ./... --coverage coverage.out --config faultline.yaml --strict-config --format json --out faultline-report.json --fail-on high
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: faultline-report
-          path: |
-            faultline-report.json
-            resolved.yaml
-            faultline-policy.md
-            faultline-suppressions.md
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: faultline-go/action@v1
 ```
+
+See [github.com/faultline-go/action](https://github.com/faultline-go/action)
+for all options including Enterprise snapshot upload, coverage integration,
+and architecture boundary enforcement.
 
 ## Docker GitHub Action
 
