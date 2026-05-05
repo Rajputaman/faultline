@@ -20,15 +20,16 @@ const SupportedConfigVersion = 1
 
 // Config is the top-level structure for faultline.yaml.
 type Config struct {
-	Version           int               `yaml:"version" json:"version"`
-	RulePacks         []RulePackRef     `yaml:"rule_packs" json:"rule_packs,omitempty"`
-	Ownership         OwnershipConfig   `yaml:"ownership" json:"ownership"`
-	Owners            OwnersConfig      `yaml:"owners" json:"owners,omitempty"`
-	Coverage          CoverageConfig    `yaml:"coverage" json:"coverage"`
-	Scoring           ScoringConfig     `yaml:"scoring" json:"scoring"`
-	Boundaries        []BoundaryRule    `yaml:"boundaries" json:"boundaries,omitempty"`
-	SuppressionPolicy SuppressionPolicy `yaml:"suppression_policy" json:"suppression_policy,omitempty"`
-	Suppressions      []Suppression     `yaml:"suppressions" json:"suppressions,omitempty"`
+	Version            int               `yaml:"version" json:"version"`
+	TestRatioThreshold float64           `yaml:"test_ratio_threshold" json:"test_ratio_threshold"`
+	RulePacks          []RulePackRef     `yaml:"rule_packs" json:"rule_packs,omitempty"`
+	Ownership          OwnershipConfig   `yaml:"ownership" json:"ownership"`
+	Owners             OwnersConfig      `yaml:"owners" json:"owners,omitempty"`
+	Coverage           CoverageConfig    `yaml:"coverage" json:"coverage"`
+	Scoring            ScoringConfig     `yaml:"scoring" json:"scoring"`
+	Boundaries         []BoundaryRule    `yaml:"boundaries" json:"boundaries,omitempty"`
+	SuppressionPolicy  SuppressionPolicy `yaml:"suppression_policy" json:"suppression_policy,omitempty"`
+	Suppressions       []Suppression     `yaml:"suppressions" json:"suppressions,omitempty"`
 }
 
 type RulePackRef struct {
@@ -193,7 +194,8 @@ type suppressionPolicyYAML SuppressionPolicy
 // DefaultConfig returns a Config with safe defaults.
 func DefaultConfig() Config {
 	return Config{
-		Version: 1,
+		Version:            1,
+		TestRatioThreshold: 0.20,
 		Ownership: OwnershipConfig{
 			RequireCodeowners: false,
 			MaxAuthorCount90d: 6,
@@ -369,6 +371,9 @@ func ValidateConfig(path string, cfg Config, unknown []ValidationIssue, configHa
 	if cfg.Coverage.MinPackageCoverage < 0 || cfg.Coverage.MinPackageCoverage > 100 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "coverage.min_package_coverage", Message: "must be between 0 and 100"})
 	}
+	if cfg.TestRatioThreshold < 0 {
+		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "test_ratio_threshold", Message: "must be zero or greater"})
+	}
 	report.Issues = append(report.Issues, validateScoringConfigIssues(cfg.Scoring)...)
 	if cfg.SuppressionPolicy.MaxDays < 0 {
 		report.Issues = append(report.Issues, ValidationIssue{Level: ValidationWarning, Path: "suppression_policy.max_days", Message: "must be zero or greater"})
@@ -523,6 +528,9 @@ func mergeConfig(dst *Config, src Config, root yaml.Node, context string, issues
 	if nodeHasPath(root, "coverage.min_package_coverage") {
 		dst.Coverage.MinPackageCoverage = src.Coverage.MinPackageCoverage
 	}
+	if nodeHasPath(root, "test_ratio_threshold") {
+		dst.TestRatioThreshold = src.TestRatioThreshold
+	}
 	if nodeHasPath(root, "scoring.churn_max_lines_30d") {
 		dst.Scoring.ChurnMaxLines30d = src.Scoring.ChurnMaxLines30d
 	}
@@ -635,15 +643,16 @@ func unknownConfigKeys(root yaml.Node, rulePack bool) []ValidationIssue {
 		return []ValidationIssue{{Level: ValidationError, Path: "$", Message: "config root must be a mapping", Line: doc.Line, Column: doc.Column}}
 	}
 	allowedTopLevel := map[string]bool{
-		"version":            true,
-		"rule_packs":         !rulePack,
-		"ownership":          true,
-		"owners":             true,
-		"coverage":           true,
-		"scoring":            true,
-		"boundaries":         true,
-		"suppression_policy": true,
-		"suppressions":       true,
+		"version":              true,
+		"test_ratio_threshold": true,
+		"rule_packs":           !rulePack,
+		"ownership":            true,
+		"owners":               true,
+		"coverage":             true,
+		"scoring":              true,
+		"boundaries":           true,
+		"suppression_policy":   true,
+		"suppressions":         true,
 	}
 	var issues []ValidationIssue
 	for i := 0; i+1 < len(doc.Content); i += 2 {

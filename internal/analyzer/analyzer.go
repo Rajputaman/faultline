@@ -119,13 +119,25 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 		}
 
 		pr := report.PackageRisk{
-			PackageID:             pkg.ID,
-			ImportPath:            pkg.ImportPath,
-			Dir:                   safeRel(repoPath, pkg.Dir),
-			ModulePath:            pkg.ModulePath,
-			ModuleRoot:            pkg.ModuleRoot,
-			LOC:                   metrics.LOC,
-			TestLOC:               metrics.TestLOC,
+			PackageID:      pkg.ID,
+			ImportPath:     pkg.ImportPath,
+			Dir:            safeRel(repoPath, pkg.Dir),
+			ModulePath:     pkg.ModulePath,
+			ModuleRoot:     pkg.ModuleRoot,
+			LOC:            metrics.LOC,
+			TestLOC:        metrics.TestLOC,
+			TestFileCount:  metrics.TestFileCount,
+			HasTestFile:    metrics.HasTestFile,
+			TestFuncCount:  metrics.TestFuncCount,
+			BenchmarkCount: metrics.BenchmarkCount,
+			FuzzCount:      metrics.FuzzCount,
+			ExampleCount:   metrics.ExampleCount,
+			TestToCodeRatio: func() float64 {
+				if metrics.LOC == 0 {
+					return 0
+				}
+				return float64(metrics.TestLOC) / float64(metrics.LOC)
+			}(),
 			GeneratedLOC:          metrics.GeneratedLOC,
 			FileCount:             metrics.FileCount,
 			GeneratedFileCount:    metrics.GeneratedFileCount,

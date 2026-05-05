@@ -14,6 +14,12 @@ import (
 type Metrics struct {
 	LOC                int
 	TestLOC            int
+	TestFileCount      int
+	HasTestFile        bool
+	TestFuncCount      int
+	BenchmarkCount     int
+	FuzzCount          int
+	ExampleCount       int
 	GeneratedLOC       int
 	FileCount          int
 	GeneratedFileCount int
@@ -56,6 +62,13 @@ func CollectMetrics(dir string, opts MetricOptions) (Metrics, error) {
 		switch {
 		case strings.HasSuffix(name, "_test.go"):
 			metrics.TestLOC += loc
+			metrics.TestFileCount++
+			metrics.HasTestFile = true
+			tests, benchmarks, fuzz, examples := countTestFunctions(data)
+			metrics.TestFuncCount += tests
+			metrics.BenchmarkCount += benchmarks
+			metrics.FuzzCount += fuzz
+			metrics.ExampleCount += examples
 		case generated:
 			metrics.GeneratedLOC += loc
 			if opts.IncludeGenerated {
@@ -66,6 +79,27 @@ func CollectMetrics(dir string, opts MetricOptions) (Metrics, error) {
 		}
 	}
 	return metrics, nil
+}
+
+func countTestFunctions(data []byte) (tests, benchmarks, fuzz, examples int) {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "func ") {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(line, "func Test"):
+			tests++
+		case strings.HasPrefix(line, "func Benchmark"):
+			benchmarks++
+		case strings.HasPrefix(line, "func Fuzz"):
+			fuzz++
+		case strings.HasPrefix(line, "func Example"):
+			examples++
+		}
+	}
+	return
 }
 
 // IsGeneratedFile detects common generated-code markers and file names.

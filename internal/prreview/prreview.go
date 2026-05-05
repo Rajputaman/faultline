@@ -1206,7 +1206,7 @@ func reviewerGuidance(review *Review) []string {
 			switch finding.ID {
 			case "FL-OWN-001", "FL-OWN-002", "FL-OWN-003", "FL-OWN-004":
 				item = "Require owner review for " + pkg.Package.ImportPath
-			case "FL-COV-001", "FL-COV-002", "FL-CHURN-001":
+			case "FL-COV-001", "FL-COV-002", "FL-CHURN-001", "FL-TST-001", "FL-TST-002":
 				item = "Add or update tests for " + pkg.Package.ImportPath
 			case "FL-BND-001", "FL-DEP-001":
 				item = "Check dependency boundary changes in " + pkg.Package.ImportPath

@@ -28,6 +28,7 @@ func (c Config) Summary() report.ConfigSummary {
 		OwnershipRequireCodeowners:                   c.Ownership.RequireCodeowners,
 		OwnershipMaxAuthorCount90d:                   c.Ownership.MaxAuthorCount90d,
 		CoverageMinPackageCoverage:                   c.Coverage.MinPackageCoverage,
+		TestRatioThreshold:                           c.TestRatioThreshold,
 		ScoringChurnMaxLines30d:                      scoring.ChurnMaxLines30d,
 		ScoringComplexityMaxLOC:                      scoring.ComplexityMaxLOC,
 		ScoringComplexityMaxImports:                  scoring.ComplexityMaxImports,
@@ -232,7 +233,7 @@ func validateSuppression(s Suppression, policy SuppressionPolicy, index int, now
 
 func validCategory(category string) bool {
 	switch report.Category(strings.ToUpper(category)) {
-	case report.CategoryOwnership, report.CategoryChurn, report.CategoryCoverage, report.CategoryComplexity, report.CategoryBoundary, report.CategoryDependency:
+	case report.CategoryOwnership, report.CategoryChurn, report.CategoryCoverage, report.CategoryComplexity, report.CategoryBoundary, report.CategoryDependency, report.CategoryTest:
 		return true
 	default:
 		return false

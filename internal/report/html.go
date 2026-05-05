@@ -94,7 +94,7 @@ func groupFindings(pkgs []PackageRisk) []severityGroup {
 		}
 	}
 	severities := []Severity{SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow}
-	categories := []Category{CategoryOwnership, CategoryChurn, CategoryCoverage, CategoryComplexity, CategoryBoundary}
+	categories := []Category{CategoryOwnership, CategoryChurn, CategoryCoverage, CategoryComplexity, CategoryBoundary, CategoryTest}
 	categories = append(categories, CategoryDependency)
 	out := make([]severityGroup, 0, len(by))
 	for _, severity := range severities {

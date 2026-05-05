@@ -113,6 +113,37 @@ func ScorePackage(pkg report.PackageRisk, opts Options) Result {
 			Confidence:     1.0,
 		})
 	}
+	if !pkg.HasTestFile {
+		findings = append(findings, report.Finding{
+			ID:             "FL-TST-001",
+			Category:       report.CategoryTest,
+			Severity:       report.SeverityMedium,
+			Title:          "No test files",
+			Description:    "Package has no _test.go files. No automated test coverage exists.",
+			Evidence:       []report.Evidence{evidence("test_file_count", pkg.TestFileCount, "filesystem")},
+			Recommendation: "Add at least one _test.go file with Test* functions covering the package's exported surface. Prioritize packages with high risk scores or dependency centrality.",
+			Confidence:     0.9,
+		})
+	}
+	testThreshold := cfg.TestRatioThreshold
+	if testThreshold <= 0 {
+		testThreshold = 0.20
+	}
+	if pkg.HasTestFile && pkg.LOC > 0 && pkg.TestToCodeRatio < testThreshold {
+		findings = append(findings, report.Finding{
+			ID:          "FL-TST-002",
+			Category:    report.CategoryTest,
+			Severity:    report.SeverityLow,
+			Title:       "Low test-to-code ratio",
+			Description: "Package test code is thin relative to production code (TestLOC/LOC below threshold).",
+			Evidence: []report.Evidence{
+				evidenceFloat("test_to_code_ratio", pkg.TestToCodeRatio, "filesystem"),
+				evidenceFloat("test_ratio_threshold", testThreshold, "policy"),
+			},
+			Recommendation: "Increase test coverage. The test-to-code ratio threshold is configurable via test_ratio_threshold in faultline.yaml.",
+			Confidence:     0.75,
+		})
+	}
 	if pkg.DominantOwner == nil && cfg.Ownership.RequireCodeowners {
 		findings = append(findings, report.Finding{
 			ID:             "FL-OWN-001",

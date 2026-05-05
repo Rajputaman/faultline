@@ -24,18 +24,19 @@ type configOptions struct {
 }
 
 type configExplanation struct {
-	Path              string                   `json:"path"`
-	ConfigHash        string                   `json:"config_hash"`
-	Ownership         policy.OwnershipConfig   `json:"ownership"`
-	Owners            policy.OwnersConfig      `json:"owners,omitempty"`
-	Coverage          policy.CoverageConfig    `json:"coverage"`
-	Scoring           policy.ScoringConfig     `json:"scoring"`
-	SuppressionPolicy policy.SuppressionPolicy `json:"suppression_policy"`
-	Boundaries        []policy.BoundaryRule    `json:"boundaries,omitempty"`
-	Suppressions      []suppressionStatus      `json:"suppressions,omitempty"`
-	Warnings          []policy.ValidationIssue `json:"warnings,omitempty"`
-	WarningCount      int                      `json:"warning_count"`
-	RulePacks         []policy.RulePackAudit   `json:"rule_packs,omitempty"`
+	Path               string                   `json:"path"`
+	ConfigHash         string                   `json:"config_hash"`
+	Ownership          policy.OwnershipConfig   `json:"ownership"`
+	Owners             policy.OwnersConfig      `json:"owners,omitempty"`
+	Coverage           policy.CoverageConfig    `json:"coverage"`
+	TestRatioThreshold float64                  `json:"test_ratio_threshold"`
+	Scoring            policy.ScoringConfig     `json:"scoring"`
+	SuppressionPolicy  policy.SuppressionPolicy `json:"suppression_policy"`
+	Boundaries         []policy.BoundaryRule    `json:"boundaries,omitempty"`
+	Suppressions       []suppressionStatus      `json:"suppressions,omitempty"`
+	Warnings           []policy.ValidationIssue `json:"warnings,omitempty"`
+	WarningCount       int                      `json:"warning_count"`
+	RulePacks          []policy.RulePackAudit   `json:"rule_packs,omitempty"`
 }
 
 type configSchema struct {
@@ -87,6 +88,7 @@ type configDocs struct {
 	Ownership          policy.OwnershipConfig   `json:"ownership"`
 	Owners             policy.OwnersConfig      `json:"owners,omitempty"`
 	Coverage           policy.CoverageConfig    `json:"coverage"`
+	TestRatioThreshold float64                  `json:"test_ratio_threshold"`
 	Scoring            policy.ScoringConfig     `json:"scoring"`
 	SuppressionPolicy  policy.SuppressionPolicy `json:"suppression_policy"`
 	Boundaries         []policy.BoundaryRule    `json:"boundaries,omitempty"`
@@ -408,18 +410,19 @@ func explainConfig(path string, cfg policy.Config, validation policy.ValidationR
 		}
 	}
 	return configExplanation{
-		Path:              path,
-		ConfigHash:        validation.ConfigHash,
-		Ownership:         cfg.Ownership,
-		Owners:            cfg.Owners,
-		Coverage:          cfg.Coverage,
-		Scoring:           policy.NormalizeScoringConfig(cfg.Scoring),
-		SuppressionPolicy: cfg.SuppressionPolicy,
-		Boundaries:        append([]policy.BoundaryRule{}, cfg.Boundaries...),
-		Suppressions:      suppressionStatuses(cfg.Suppressions, cfg.SuppressionPolicy, now),
-		Warnings:          warnings,
-		WarningCount:      len(warnings),
-		RulePacks:         append([]policy.RulePackAudit{}, validation.RulePacks...),
+		Path:               path,
+		ConfigHash:         validation.ConfigHash,
+		Ownership:          cfg.Ownership,
+		Owners:             cfg.Owners,
+		Coverage:           cfg.Coverage,
+		TestRatioThreshold: cfg.TestRatioThreshold,
+		Scoring:            policy.NormalizeScoringConfig(cfg.Scoring),
+		SuppressionPolicy:  cfg.SuppressionPolicy,
+		Boundaries:         append([]policy.BoundaryRule{}, cfg.Boundaries...),
+		Suppressions:       suppressionStatuses(cfg.Suppressions, cfg.SuppressionPolicy, now),
+		Warnings:           warnings,
+		WarningCount:       len(warnings),
+		RulePacks:          append([]policy.RulePackAudit{}, validation.RulePacks...),
 	}
 }
 
@@ -454,6 +457,7 @@ func renderConfigExplanationMarkdown(expl configExplanation) string {
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Coverage")
 	fmt.Fprintf(&b, "- Minimum package coverage: `%.2f`\n", expl.Coverage.MinPackageCoverage)
+	fmt.Fprintf(&b, "- Test-to-code ratio threshold: `%.2f`\n", expl.TestRatioThreshold)
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Scoring Calibration")
 	fmt.Fprintf(&b, "- Churn max lines in 30 days: `%d`\n", expl.Scoring.ChurnMaxLines30d)
@@ -517,6 +521,7 @@ func buildConfigSchema() configSchema {
 				Required:    true,
 				Fields: []schemaField{
 					{Path: "version", Type: "integer", Required: true, Default: "No default in policy files; value must be present for auditable CI use.", Validation: []string{"must equal 1"}, Description: "Faultline config schema version."},
+					{Path: "test_ratio_threshold", Type: "number", Default: "0.20", Validation: []string{"must be zero or greater", "values at or below zero use the default"}, Description: "Minimum TestLOC/LOC ratio before FL-TST-002 is emitted for packages that have test files."},
 				},
 			},
 			{
@@ -680,6 +685,7 @@ func buildConfigDocs(path string, cfg policy.Config, validation policy.Validatio
 		Ownership:          cfg.Ownership,
 		Owners:             cfg.Owners,
 		Coverage:           cfg.Coverage,
+		TestRatioThreshold: cfg.TestRatioThreshold,
 		Scoring:            policy.NormalizeScoringConfig(cfg.Scoring),
 		SuppressionPolicy:  cfg.SuppressionPolicy,
 		Boundaries:         append([]policy.BoundaryRule{}, cfg.Boundaries...),
@@ -750,6 +756,7 @@ func renderConfigDocsMarkdown(docs configDocs) string {
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Coverage Thresholds")
 	fmt.Fprintf(&b, "- Minimum package coverage: `%.2f`\n", docs.Coverage.MinPackageCoverage)
+	fmt.Fprintf(&b, "- Test-to-code ratio threshold: `%.2f`\n", docs.TestRatioThreshold)
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "## Scoring Calibration")
 	fmt.Fprintf(&b, "- Churn max lines in 30 days: `%d`\n", docs.Scoring.ChurnMaxLines30d)
@@ -820,7 +827,7 @@ var configDocsHTML = template.Must(template.New("config-docs").Funcs(template.Fu
 <p>{{.StrictModeSummary}}</p>
 {{if .RulePacks}}<h2>Rule Packs</h2><table><thead><tr><th>Path</th><th>Imported</th><th>Content Hash</th></tr></thead><tbody>{{range .RulePacks}}<tr><td class="mono">{{.Path}}</td><td>{{.Imported}}</td><td class="mono">{{.ContentHash}}</td></tr>{{end}}</tbody></table>{{end}}
 <h2>Ownership Rules</h2><ul><li>Require CODEOWNERS: <span class="mono">{{.Ownership.RequireCodeowners}}</span></li><li>Max authors in 90 days: <span class="mono">{{.Ownership.MaxAuthorCount90d}}</span></li></ul>
-<h2>Coverage Thresholds</h2><p>Minimum package coverage: <span class="mono">{{printf "%.2f" .Coverage.MinPackageCoverage}}</span></p>
+<h2>Coverage Thresholds</h2><p>Minimum package coverage: <span class="mono">{{printf "%.2f" .Coverage.MinPackageCoverage}}</span></p><p>Test-to-code ratio threshold: <span class="mono">{{printf "%.2f" .TestRatioThreshold}}</span></p>
 <h2>Scoring Calibration</h2><ul><li>Churn max lines in 30 days: <span class="mono">{{.Scoring.ChurnMaxLines30d}}</span></li><li>Complexity max LOC: <span class="mono">{{.Scoring.ComplexityMaxLOC}}</span></li><li>Complexity max imports: <span class="mono">{{.Scoring.ComplexityMaxImports}}</span></li><li>Complexity max files: <span class="mono">{{.Scoring.ComplexityMaxFiles}}</span></li><li>Dependency centrality max reverse imports: <span class="mono">{{.Scoring.DependencyCentralityMaxReverseImportCount}}</span></li></ul>
 <h2>Suppression Policy</h2><ul><li>Require owner: <span class="mono">{{.SuppressionPolicy.RequireOwner}}</span></li><li>Require reason: <span class="mono">{{.SuppressionPolicy.RequireReason}}</span></li><li>Require expiry: <span class="mono">{{.SuppressionPolicy.RequireExpires}}</span></li><li>Maximum waiver duration: <span class="mono">{{.SuppressionPolicy.MaxDays}}</span> days</li></ul>
 <h2>Boundary Rules</h2>{{if .Boundaries}}<table><thead><tr><th>Name</th><th>From</th><th>Deny</th><th>Except</th></tr></thead><tbody>{{range .Boundaries}}<tr><td>{{.Name}}</td><td class="mono">{{.From}}</td><td class="mono">{{join .Deny ", "}}</td><td class="mono">{{join .Except ", "}}</td></tr>{{end}}</tbody></table>{{else}}<p>No boundary rules configured.</p>{{end}}

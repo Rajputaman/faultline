@@ -45,6 +45,8 @@ func TestBuildBasicDocumentAndRules(t *testing.T) {
 		"FL-OWN-002",
 		"FL-OWN-003",
 		"FL-OWN-004",
+		"FL-TST-001",
+		"FL-TST-002",
 	}
 	if len(driver.Rules) != len(wantIDs) {
 		t.Fatalf("rules = %d, want %d", len(driver.Rules), len(wantIDs))

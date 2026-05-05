@@ -12,6 +12,7 @@ const (
 	CategoryComplexity Category = "COMPLEXITY"
 	CategoryBoundary   Category = "BOUNDARY"
 	CategoryDependency Category = "DEPENDENCY"
+	CategoryTest       Category = "TEST"
 )
 
 // Severity indicates how urgent a finding is.
@@ -97,6 +98,13 @@ type PackageRisk struct {
 	ModuleRoot            string           `json:"module_root,omitempty"`
 	LOC                   int              `json:"loc"`
 	TestLOC               int              `json:"test_loc"`
+	TestFileCount         int              `json:"test_file_count"`
+	HasTestFile           bool             `json:"has_test_file"`
+	TestFuncCount         int              `json:"test_func_count"`
+	BenchmarkCount        int              `json:"benchmark_count"`
+	FuzzCount             int              `json:"fuzz_count"`
+	ExampleCount          int              `json:"example_count"`
+	TestToCodeRatio       float64          `json:"test_to_code_ratio"`
 	GeneratedLOC          int              `json:"generated_loc"`
 	FileCount             int              `json:"file_count"`
 	GeneratedFileCount    int              `json:"generated_file_count"`
@@ -204,6 +212,7 @@ type ConfigSummary struct {
 	OwnershipRequireCodeowners                   bool    `json:"ownership_require_codeowners"`
 	OwnershipMaxAuthorCount90d                   int     `json:"ownership_max_author_count_90d"`
 	CoverageMinPackageCoverage                   float64 `json:"coverage_min_package_coverage"`
+	TestRatioThreshold                           float64 `json:"test_ratio_threshold"`
 	ScoringChurnMaxLines30d                      int     `json:"scoring_churn_max_lines_30d"`
 	ScoringComplexityMaxLOC                      int     `json:"scoring_complexity_max_loc"`
 	ScoringComplexityMaxImports                  int     `json:"scoring_complexity_max_imports"`
