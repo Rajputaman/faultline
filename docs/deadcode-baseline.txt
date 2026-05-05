@@ -3,9 +3,9 @@ internal/git/git.go:29:6: unreachable func: IsRepo
 internal/module/module.go:216:6: unreachable func: ByDir
 internal/ownership/codeowners.go:123:23: unreachable func: Codeowners.OwnersForPath
 internal/ownership/codeowners.go:154:23: unreachable func: Codeowners.OwnersForPackage
-internal/policy/config.go:245:6: unreachable func: LoadConfig
-internal/policy/config.go:250:6: unreachable func: LoadConfigWithValidation
-internal/policy/config.go:406:6: unreachable func: ConfigHash
+internal/policy/config.go:247:6: unreachable func: LoadConfig
+internal/policy/config.go:252:6: unreachable func: LoadConfigWithValidation
+internal/policy/config.go:411:6: unreachable func: ConfigHash
 internal/prreview/prreview.go:659:6: unreachable func: WithBaseWorktree
-internal/sarif/sarif.go:126:6: unreachable func: Convert
-internal/sarif/sarif.go:143:6: unreachable func: Build
+internal/sarif/sarif.go:129:6: unreachable func: Convert
+internal/sarif/sarif.go:146:6: unreachable func: Build

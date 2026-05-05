@@ -95,13 +95,3 @@ func ToSnapshotIncidents(items []Incident) []report.SnapshotIncident {
 	}
 	return out
 }
-
-// IsCriticalOrHigh returns true if the severity is P1, P2, critical, or high.
-func IsCriticalOrHigh(s Severity) bool {
-	switch s {
-	case SeverityP1, SeverityP2, SeverityCritical, SeverityHigh:
-		return true
-	default:
-		return false
-	}
-}
