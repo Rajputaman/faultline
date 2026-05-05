@@ -25,6 +25,32 @@ Faultline is local-first. It does not upload source code, run a server, execute 
 - **Stay local by default:** scan in a developer shell or CI without uploading source code.
 - **Bridge to governance:** export `faultline.snapshot.v1` metadata for dashboards and audit workflows while keeping code private.
 
+## OSS to Enterprise in One Setup Session
+
+Use the open-source scanner when you need local reports, PR comments, SARIF, or
+metadata snapshots inside a developer-controlled environment. Use Faultline
+Enterprise when a Go-heavy engineering organization needs multi-repo visibility,
+weekly governance review, suppression debt tracking, policy pack workflows, and
+audit evidence.
+
+The fastest Enterprise path is:
+
+1. Start a trial at [app.gofaultline.dev](https://app.gofaultline.dev).
+2. Create an API token in **Settings -> API Tokens**.
+3. Run the scanner with Enterprise upload enabled:
+
+```sh
+faultline scan ./... \
+  --enterprise-url https://api.gofaultline.dev \
+  --enterprise-token "$FAULTLINE_API_TOKEN" \
+  --enterprise-org-id "$FAULTLINE_ORG_ID"
+```
+
+The activation milestone is the first non-demo snapshot in the Enterprise
+dashboard. Source code stays in your shell or CI runner; Enterprise receives
+source-free repository metadata, package risk records, findings, suppressions,
+policy signals, dependency metadata, and audit events.
+
 Try a bundled sample:
 
 ```sh
