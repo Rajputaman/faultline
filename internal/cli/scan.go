@@ -14,6 +14,7 @@ import (
 	"github.com/faultline-go/faultline/internal/report"
 	"github.com/faultline-go/faultline/internal/sarif"
 	"github.com/faultline-go/faultline/internal/storage"
+	"github.com/faultline-go/faultline/internal/upload"
 	fexport "github.com/faultline-go/faultline/pkg/export"
 	"github.com/spf13/cobra"
 )
@@ -35,6 +36,9 @@ type scanOptions struct {
 	allModules             bool
 	ignoreModules          []string
 	verbose                bool
+	enterpriseURL          string
+	enterpriseToken        string
+	enterpriseOrgID        string
 }
 
 type ExitError struct {
@@ -75,6 +79,9 @@ func newScanCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.allModules, "all-modules", false, "scan all discovered modules when running from inside one module")
 	cmd.Flags().StringArrayVar(&opts.ignoreModules, "ignore-module", nil, "ignore a module path or module root; repeatable")
 	cmd.Flags().BoolVar(&opts.verbose, "verbose", false, "print scan progress")
+	cmd.Flags().StringVar(&opts.enterpriseURL, "enterprise-url", "", "Faultline Enterprise API base URL for snapshot upload (e.g. https://api.gofaultline.dev)")
+	cmd.Flags().StringVar(&opts.enterpriseToken, "enterprise-token", "", "Faultline API token for Enterprise snapshot upload")
+	cmd.Flags().StringVar(&opts.enterpriseOrgID, "enterprise-org-id", "", "Faultline organization ID for Enterprise snapshot upload")
 	return cmd
 }
 
@@ -120,6 +127,25 @@ func runScan(cmd *cobra.Command, opts scanOptions, patterns []string) error {
 	}
 	if opts.verbose {
 		fmt.Fprintf(cmd.ErrOrStderr(), "wrote %s report to %s\n", format, opts.out)
+	}
+	uploadCfg := upload.Config{
+		BaseURL: opts.enterpriseURL,
+		Token:   opts.enterpriseToken,
+		OrgID:   opts.enterpriseOrgID,
+	}
+	if uploadCfg.IsConfigured() {
+		snapshotJSON, err := generateSnapshotJSON(rep)
+		if err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: could not prepare snapshot for upload: %v\n", err)
+		} else {
+			result, err := upload.UploadSnapshot(cmd.Context(), uploadCfg, snapshotJSON)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: enterprise upload failed: %v\n", err)
+			} else {
+				fmt.Fprintf(cmd.ErrOrStderr(), "enterprise: snapshot uploaded (id: %s, packages: %d, findings: %d)\n",
+					result.SnapshotID, result.PackageCount, result.FindingCount)
+			}
+		}
 	}
 	if failOn != "" && report.HasFindingAtOrAbove(rep.Packages, report.Severity(failOn), rep.DependencyFindings) {
 		return ExitError{Code: 1, Err: fmt.Errorf("scan completed with findings at or above %s", strings.ToLower(failOn))}
@@ -237,15 +263,7 @@ func buildScanReport(cmd *cobra.Command, opts scanOptions, patterns []string) (*
 }
 
 func writeSnapshotFile(path string, rep *report.Report) error {
-	reportJSON, err := report.MarshalJSON(rep)
-	if err != nil {
-		return err
-	}
-	snapshot, err := fexport.FromReportJSON(reportJSON)
-	if err != nil {
-		return err
-	}
-	data, err := fexport.MarshalJSON(snapshot)
+	data, err := generateSnapshotJSON(rep)
 	if err != nil {
 		return err
 	}
@@ -253,6 +271,18 @@ func writeSnapshotFile(path string, rep *report.Report) error {
 		return fmt.Errorf("write snapshot %s: %w", path, err)
 	}
 	return nil
+}
+
+func generateSnapshotJSON(rep *report.Report) ([]byte, error) {
+	reportJSON, err := report.MarshalJSON(rep)
+	if err != nil {
+		return nil, fmt.Errorf("marshal report: %w", err)
+	}
+	snapshot, err := fexport.FromReportJSON(reportJSON)
+	if err != nil {
+		return nil, fmt.Errorf("build snapshot: %w", err)
+	}
+	return fexport.MarshalJSON(snapshot)
 }
 
 func packageImportPaths(rep *report.Report) []string {

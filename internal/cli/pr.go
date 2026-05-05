@@ -8,6 +8,7 @@ import (
 	"github.com/faultline-go/faultline/internal/policy"
 	"github.com/faultline-go/faultline/internal/prreview"
 	"github.com/faultline-go/faultline/internal/report"
+	"github.com/faultline-go/faultline/internal/upload"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +25,9 @@ type prOptions struct {
 	strictConfig           bool
 	allowConfigOutsideRepo bool
 	compareMode            string
+	enterpriseURL          string
+	enterpriseToken        string
+	enterpriseOrgID        string
 }
 
 func newPRCommand() *cobra.Command {
@@ -56,6 +60,9 @@ func newPRReviewCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.strictConfig, "strict-config", false, "fail on config validation warnings or errors")
 	cmd.Flags().BoolVar(&opts.allowConfigOutsideRepo, "allow-config-outside-repo", false, "allow rule pack paths outside the repository root")
 	cmd.Flags().StringVar(&opts.compareMode, "compare-mode", "auto", "comparison source: auto, worktree, or history")
+	cmd.Flags().StringVar(&opts.enterpriseURL, "enterprise-url", "", "Faultline Enterprise API base URL for snapshot upload")
+	cmd.Flags().StringVar(&opts.enterpriseToken, "enterprise-token", "", "Faultline API token for Enterprise snapshot upload")
+	cmd.Flags().StringVar(&opts.enterpriseOrgID, "enterprise-org-id", "", "Faultline organization ID for Enterprise snapshot upload")
 	return cmd
 }
 
@@ -114,6 +121,14 @@ func runPRReview(cmd *cobra.Command, opts prOptions) error {
 		for _, warning := range review.Warnings {
 			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", warning)
 		}
+	}
+	uploadCfg := upload.Config{
+		BaseURL: opts.enterpriseURL,
+		Token:   opts.enterpriseToken,
+		OrgID:   opts.enterpriseOrgID,
+	}
+	if uploadCfg.IsConfigured() {
+		fmt.Fprintf(cmd.ErrOrStderr(), "enterprise upload: snapshot upload after PR review not yet supported\n")
 	}
 	if failOn != "" && prreview.HasFailingNewFinding(review, report.Severity(failOn)) {
 		return ExitError{Code: 1, Err: fmt.Errorf("PR review found new findings at or above %s", strings.ToLower(failOn))}
