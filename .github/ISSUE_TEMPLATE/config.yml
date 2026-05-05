@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Security vulnerability
-    url: mailto:security@faultline.dev
-    about: Please report suspected vulnerabilities privately.
-  - name: Questions and ideas
-    url: https://github.com/faultline-go/faultline/discussions
-    about: Use Discussions for usage questions, design ideas, and roadmap conversation.
+  - name: Enterprise support
+    url: https://gofaultline.dev/contact/
+    about: Faultline Enterprise questions, pilots, and demos
+  - name: Documentation
+    url: https://docs.gofaultline.dev
+    about: Docs for OSS scanner and Enterprise upload
