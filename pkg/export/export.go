@@ -34,6 +34,7 @@ type Snapshot struct {
 	Findings      []FindingSnapshot     `json:"findings,omitempty"`
 	Suppressions  []SuppressionSnapshot `json:"suppressions,omitempty"`
 	Dependencies  []DependencySnapshot  `json:"dependencies,omitempty"`
+	Incidents     []IncidentSnapshot    `json:"incidents,omitempty"`
 	Warnings      []WarningSnapshot     `json:"warnings,omitempty"`
 }
 
@@ -111,6 +112,8 @@ type PackageSnapshot struct {
 	OwnerSource        string          `json:"owner_source,omitempty"`
 	ReverseImportCount int             `json:"reverse_import_count"`
 	FindingIdentities  []string        `json:"finding_identities,omitempty"`
+	IncidentIDs        []string        `json:"incident_ids,omitempty"`
+	IncidentCount      int             `json:"incident_count,omitempty"`
 	Evidence           []EvidencePoint `json:"evidence,omitempty"`
 }
 
@@ -167,6 +170,17 @@ type DependencySnapshot struct {
 	CrossModuleReplace bool     `json:"cross_module_replace,omitempty"`
 	PseudoVersion      bool     `json:"pseudo_version,omitempty"`
 	FindingIdentities  []string `json:"finding_identities,omitempty"`
+}
+
+// IncidentSnapshot records an operational incident included in the snapshot.
+type IncidentSnapshot struct {
+	ID               string     `json:"id"`
+	Title            string     `json:"title"`
+	Severity         string     `json:"severity"`
+	StartedAt        time.Time  `json:"started_at"`
+	ResolvedAt       *time.Time `json:"resolved_at,omitempty"`
+	AffectedPackages []string   `json:"affected_packages"`
+	URL              string     `json:"url,omitempty"`
 }
 
 // EvidencePoint is a sanitized evidence item. Evidence values should remain
@@ -259,6 +273,17 @@ func fromReport(rep *report.Report) *Snapshot {
 	for _, warning := range rep.Warnings {
 		snapshot.Warnings = append(snapshot.Warnings, WarningSnapshot{Source: warning.Source, Message: warning.Message})
 	}
+	for _, inc := range rep.Incidents {
+		snapshot.Incidents = append(snapshot.Incidents, IncidentSnapshot{
+			ID:               inc.ID,
+			Title:            inc.Title,
+			Severity:         inc.Severity,
+			StartedAt:        inc.StartedAt,
+			ResolvedAt:       inc.ResolvedAt,
+			AffectedPackages: append([]string{}, inc.AffectedPackages...),
+			URL:              inc.URL,
+		})
+	}
 	for _, pkg := range rep.Packages {
 		owner := ""
 		if pkg.DominantOwner != nil {
@@ -281,6 +306,8 @@ func fromReport(rep *report.Report) *Snapshot {
 			Owner:              owner,
 			OwnerSource:        pkg.OwnerSource,
 			ReverseImportCount: pkg.ReverseImportCount,
+			IncidentIDs:        append([]string{}, pkg.IncidentIDs...),
+			IncidentCount:      pkg.IncidentCount,
 			Evidence:           evidencePoints(pkg.Evidence),
 		}
 		for _, finding := range pkg.Findings {
@@ -466,6 +493,18 @@ func normalize(snapshot *Snapshot) {
 			return snapshot.Dependencies[i].SourceModuleRoot < snapshot.Dependencies[j].SourceModuleRoot
 		}
 		return snapshot.Dependencies[i].ModulePath < snapshot.Dependencies[j].ModulePath
+	})
+	for i := range snapshot.Packages {
+		sort.Strings(snapshot.Packages[i].IncidentIDs)
+	}
+	for i := range snapshot.Incidents {
+		sort.Strings(snapshot.Incidents[i].AffectedPackages)
+	}
+	sort.SliceStable(snapshot.Incidents, func(i, j int) bool {
+		if !snapshot.Incidents[i].StartedAt.Equal(snapshot.Incidents[j].StartedAt) {
+			return snapshot.Incidents[i].StartedAt.Before(snapshot.Incidents[j].StartedAt)
+		}
+		return snapshot.Incidents[i].ID < snapshot.Incidents[j].ID
 	})
 	sort.SliceStable(snapshot.Warnings, func(i, j int) bool {
 		if snapshot.Warnings[i].Source != snapshot.Warnings[j].Source {

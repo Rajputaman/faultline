@@ -13,6 +13,7 @@ const (
 	CategoryBoundary   Category = "BOUNDARY"
 	CategoryDependency Category = "DEPENDENCY"
 	CategoryTest       Category = "TEST"
+	CategoryIncident   Category = "INCIDENT"
 )
 
 // Severity indicates how urgent a finding is.
@@ -126,9 +127,22 @@ type PackageRisk struct {
 	RiskDelta             *float64         `json:"risk_delta,omitempty"`
 	Trend                 string           `json:"trend,omitempty"`
 	ScoreBreakdown        ScoreBreakdown   `json:"score_breakdown"`
+	IncidentIDs           []string         `json:"incident_ids,omitempty"`
+	IncidentCount         int              `json:"incident_count,omitempty"`
 	Findings              []Finding        `json:"findings,omitempty"`
 	Evidence              []Evidence       `json:"evidence,omitempty"`
 	LoadErrors            []string         `json:"load_errors,omitempty"`
+}
+
+// SnapshotIncident records an operational incident attached to a scan snapshot.
+type SnapshotIncident struct {
+	ID               string     `json:"id"`
+	Title            string     `json:"title"`
+	Severity         string     `json:"severity"`
+	StartedAt        time.Time  `json:"started_at"`
+	ResolvedAt       *time.Time `json:"resolved_at,omitempty"`
+	AffectedPackages []string   `json:"affected_packages"`
+	URL              string     `json:"url,omitempty"`
 }
 
 // DependencyRisk records local Go module dependency metadata and structural
@@ -233,6 +247,7 @@ type Report struct {
 	Dependencies       []DependencyRisk    `json:"dependencies,omitempty"`
 	DependencyFindings []Finding           `json:"dependency_findings,omitempty"`
 	Govulncheck        *ExternalToolResult `json:"govulncheck,omitempty"`
+	Incidents          []SnapshotIncident  `json:"incidents,omitempty"`
 	Packages           []PackageRisk       `json:"packages"`
 	Summary            Summary             `json:"summary"`
 }

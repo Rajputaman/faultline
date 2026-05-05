@@ -38,6 +38,8 @@ type Scanner struct {
 	Modules          []report.ModuleInfo
 	GoWorkPath       string
 	VerboseWriter    VerboseWriter
+	IncidentIndex    map[string][]report.SnapshotIncident
+	Incidents        []report.SnapshotIncident
 }
 
 // Scan analyzes the requested package patterns and returns a report. Best-effort
@@ -153,6 +155,20 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 		pr.LoadErrors = append(pr.LoadErrors, coverageWarnings...)
 		if coErr != nil {
 			pr.LoadErrors = append(pr.LoadErrors, coErr.Error())
+		}
+		if incidentItems := s.IncidentIndex[pkg.ImportPath]; len(incidentItems) > 0 {
+			ids := make([]string, 0, len(incidentItems))
+			for _, inc := range incidentItems {
+				if inc.ID != "" {
+					ids = append(ids, inc.ID)
+				}
+			}
+			sort.Strings(ids)
+			pr.IncidentIDs = ids
+			pr.IncidentCount = len(ids)
+			for _, id := range ids {
+				pr.Evidence = append(pr.Evidence, report.Evidence{Key: "incident_id", Value: id, Source: "incidents"})
+			}
 		}
 		for _, issue := range loadIssues {
 			if issue.PackageID == pkg.ID || issue.ImportPath == pkg.ImportPath {
@@ -278,6 +294,7 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 		Dependencies:       dependencyResult.Dependencies,
 		DependencyFindings: dependencyResult.Findings,
 		Govulncheck:        dependencyResult.Govulncheck,
+		Incidents:          append([]report.SnapshotIncident{}, s.Incidents...),
 		Packages:           risks,
 		Summary:            report.ComputeSummaryWithDependencies(risks, warnings, dependencyResult.Findings),
 	}

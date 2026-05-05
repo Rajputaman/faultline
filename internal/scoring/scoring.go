@@ -61,7 +61,7 @@ func ScorePackage(pkg report.PackageRisk, opts Options) Result {
 		evidence("scoring_version", Version, "scoring"),
 	}
 
-	findings := make([]report.Finding, 0, 7)
+	findings := make([]report.Finding, 0, 8)
 	if pkg.Churn30d >= 500 {
 		findings = append(findings, report.Finding{
 			ID:          "FL-CHURN-001",
@@ -142,6 +142,22 @@ func ScorePackage(pkg report.PackageRisk, opts Options) Result {
 			},
 			Recommendation: "Increase test coverage. The test-to-code ratio threshold is configurable via test_ratio_threshold in faultline.yaml.",
 			Confidence:     0.75,
+		})
+	}
+	if pkg.IncidentCount > 0 {
+		incidentEvidence := []report.Evidence{evidence("incident_count", pkg.IncidentCount, "incidents")}
+		for _, id := range pkg.IncidentIDs {
+			incidentEvidence = append(incidentEvidence, evidence("incident_id", id, "incidents"))
+		}
+		findings = append(findings, report.Finding{
+			ID:             "FL-INC-001",
+			Category:       report.CategoryIncident,
+			Severity:       report.SeverityHigh,
+			Title:          "Package involved in recent incident",
+			Description:    "This package was listed as affected in one or more operational incidents within the lookback window.",
+			Evidence:       incidentEvidence,
+			Recommendation: "Review incident history for this package. High risk score combined with recent incident involvement is the highest priority governance signal.",
+			Confidence:     0.9,
 		})
 	}
 	if pkg.DominantOwner == nil && cfg.Ownership.RequireCodeowners {

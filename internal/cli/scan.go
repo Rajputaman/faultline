@@ -9,6 +9,7 @@ import (
 
 	"github.com/faultline-go/faultline/internal/analyzer"
 	fgit "github.com/faultline-go/faultline/internal/git"
+	"github.com/faultline-go/faultline/internal/incidents"
 	fmodule "github.com/faultline-go/faultline/internal/module"
 	"github.com/faultline-go/faultline/internal/policy"
 	"github.com/faultline-go/faultline/internal/report"
@@ -39,6 +40,7 @@ type scanOptions struct {
 	enterpriseURL          string
 	enterpriseToken        string
 	enterpriseOrgID        string
+	incidents              string
 }
 
 type ExitError struct {
@@ -82,6 +84,7 @@ func newScanCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.enterpriseURL, "enterprise-url", "", "Faultline Enterprise API base URL for snapshot upload (e.g. https://api.gofaultline.dev)")
 	cmd.Flags().StringVar(&opts.enterpriseToken, "enterprise-token", "", "Faultline API token for Enterprise snapshot upload")
 	cmd.Flags().StringVar(&opts.enterpriseOrgID, "enterprise-org-id", "", "Faultline organization ID for Enterprise snapshot upload")
+	cmd.Flags().StringVar(&opts.incidents, "incidents", "", "optional path to faultline.incidents.v1 JSON file for incident correlation")
 	return cmd
 }
 
@@ -188,6 +191,16 @@ func buildScanReport(cmd *cobra.Command, opts scanOptions, patterns []string) (*
 	}
 
 	buildTags := splitTags(opts.tags)
+	var incidentIndex map[string][]report.SnapshotIncident
+	var snapshotIncidents []report.SnapshotIncident
+	if opts.incidents != "" {
+		incidentFile, err := incidents.LoadFile(opts.incidents)
+		if err != nil {
+			return nil, fmt.Errorf("load incidents: %w", err)
+		}
+		incidentIndex = incidents.PackageIndex(incidentFile.Incidents, 90)
+		snapshotIncidents = incidents.ToSnapshotIncidents(incidentFile.Incidents)
+	}
 	modules, goWorkPath, moduleWarnings := resolveModules(scanRoot, cwd, opts)
 	scanner := analyzer.Scanner{
 		RepoPath:         scanRoot,
@@ -201,6 +214,8 @@ func buildScanReport(cmd *cobra.Command, opts scanOptions, patterns []string) (*
 		Modules:          modules,
 		GoWorkPath:       goWorkPath,
 		VerboseWriter:    verboseWriter(cmd, opts.verbose),
+		IncidentIndex:    incidentIndex,
+		Incidents:        snapshotIncidents,
 	}
 	rep, err := scanner.Scan(cmd.Context(), patterns)
 	if err != nil {

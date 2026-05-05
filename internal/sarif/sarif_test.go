@@ -41,6 +41,7 @@ func TestBuildBasicDocumentAndRules(t *testing.T) {
 		"FL-DEP-006",
 		"FL-DEP-007",
 		"FL-GEN-001",
+		"FL-INC-001",
 		"FL-OWN-001",
 		"FL-OWN-002",
 		"FL-OWN-003",

@@ -121,6 +121,7 @@ var rules = []ruleMetadata{
 	{id: "FL-DEP-006", name: "Pseudo-version dependency", short: "Dependency uses pseudo-version", full: "A dependency uses Go pseudo-version metadata instead of a tagged module version.", help: "Prefer tagged module versions when practical.", severity: report.SeverityLow},
 	{id: "FL-DEP-007", name: "Cross-module local replace", short: "Cross-module local replace inside repository", full: "A module uses a local replace directive pointing to another module in the same repository.", help: "Prefer go.work workspace usage for local multi-module development, or document why the committed replace is required.", severity: report.SeverityMedium},
 	{id: "FL-GEN-001", name: "Generated-code-heavy package", short: "Generated-code-heavy package", full: "Generated files dominate this package, so structural metrics may be less actionable.", help: "Interpret package metrics cautiously and prefer generator-level ownership and testing checks.", severity: report.SeverityLow},
+	{id: "FL-INC-001", name: "Package involved in recent incident", short: "Package involved in recent incident", full: "This package was listed as affected in one or more operational incidents within the lookback window.", help: "Review incident history for this package. High risk score combined with recent incident involvement is the highest priority governance signal.", severity: report.SeverityHigh},
 }
 
 // Convert returns deterministic SARIF 2.1.0 JSON. Suppressed findings are
