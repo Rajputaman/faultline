@@ -107,151 +107,23 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 	}
 
 	reverseImports := computeReverseImports(loaded)
-	coverageResolver := newCoverageResolver(coverageByPackage, loaded, repoPath)
-	multiModule := len(fmodule.Selected(s.Modules)) > 1
-	risks := make([]report.PackageRisk, 0, len(loaded))
-	for _, pkg := range loaded {
-		if shouldSkipDir(repoPath, pkg.Dir) || matchesExclude(repoPath, pkg.Dir, s.ExcludeGlobs) {
-			continue
-		}
-
-		metrics, err := CollectMetrics(pkg.Dir, MetricOptions{IncludeGenerated: s.IncludeGenerated})
-		if err != nil {
-			metrics.Errors = append(metrics.Errors, err.Error())
-		}
-
-		pr := report.PackageRisk{
-			PackageID:      pkg.ID,
-			ImportPath:     pkg.ImportPath,
-			Dir:            safeRel(repoPath, pkg.Dir),
-			ModulePath:     pkg.ModulePath,
-			ModuleRoot:     pkg.ModuleRoot,
-			LOC:            metrics.LOC,
-			TestLOC:        metrics.TestLOC,
-			TestFileCount:  metrics.TestFileCount,
-			HasTestFile:    metrics.HasTestFile,
-			TestFuncCount:  metrics.TestFuncCount,
-			BenchmarkCount: metrics.BenchmarkCount,
-			FuzzCount:      metrics.FuzzCount,
-			ExampleCount:   metrics.ExampleCount,
-			TestToCodeRatio: func() float64 {
-				if metrics.LOC == 0 {
-					return 0
-				}
-				return float64(metrics.TestLOC) / float64(metrics.LOC)
-			}(),
-			GeneratedLOC:          metrics.GeneratedLOC,
-			FileCount:             metrics.FileCount,
-			GeneratedFileCount:    metrics.GeneratedFileCount,
-			ImportCount:           len(pkg.Imports),
-			ReverseImportCount:    reverseImports[pkg.ImportPath],
-			DirectInternalImports: append([]string{}, pkg.InternalImports...),
-			LoadErrors:            append([]string{}, pkg.Errors...),
-		}
-		pr.LoadErrors = append(pr.LoadErrors, metrics.Errors...)
-		if coverageErr != "" {
-			pr.LoadErrors = append(pr.LoadErrors, coverageErr)
-		}
-		pr.LoadErrors = append(pr.LoadErrors, coverageWarnings...)
-		if coErr != nil {
-			pr.LoadErrors = append(pr.LoadErrors, coErr.Error())
-		}
-		if incidentItems := s.IncidentIndex[pkg.ImportPath]; len(incidentItems) > 0 {
-			ids := make([]string, 0, len(incidentItems))
-			for _, inc := range incidentItems {
-				if inc.ID != "" {
-					ids = append(ids, inc.ID)
-				}
-			}
-			sort.Strings(ids)
-			pr.IncidentIDs = ids
-			pr.IncidentCount = len(ids)
-			for _, id := range ids {
-				pr.Evidence = append(pr.Evidence, report.Evidence{Key: "incident_id", Value: id, Source: "incidents"})
-			}
-		}
-		for _, issue := range loadIssues {
-			if issue.PackageID == pkg.ID || issue.ImportPath == pkg.ImportPath {
-				pr.LoadErrors = appendUnique(pr.LoadErrors, issue.Error)
-			}
-		}
-
-		if match, ok := coverageResolver.ForPackage(pkg); ok {
-			pct := match.Pct
-			v := round2(pct)
-			pr.CoveragePct = &v
-			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_pct", Value: fmt.Sprintf("%.2f", v), Source: "coverage"})
-			if match.Key != "" {
-				pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_key", Value: match.Key, Source: "coverage"})
-			}
-		} else if s.CoveragePath != "" && coverageErr == "" {
-			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage", Value: "unknown for package", Source: "coverage"})
-		}
-
-		authorCounts := map[string]int{}
-		if gitErr == nil {
-			churn, err := fgit.PackageChurn(ctx, gitRoot, pkg.Dir)
-			if err == nil {
-				pr.Churn30d = churn.Churn30d
-				pr.Churn90d = churn.Churn90d
-				pr.AuthorCount90d = churn.AuthorCount90d
-				pr.Evidence = append(pr.Evidence,
-					report.Evidence{Key: "git_window_30d", Value: fgit.Window30d, Source: "git"},
-					report.Evidence{Key: "git_window_90d", Value: fgit.Window90d, Source: "git"},
-					report.Evidence{Key: "churn_unit", Value: "added+deleted lines", Source: "git"},
-				)
-			} else {
-				pr.LoadErrors = append(pr.LoadErrors, err.Error())
-			}
-			authorCounts, err = fgit.PackageAuthorCounts(ctx, gitRoot, pkg.Dir)
-			if err == nil {
-				pr.OwnershipEntropy = round2(ownership.NormalizedEntropy(authorCounts))
-			}
-		}
-
-		if codeowners != nil {
-			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "codeowners_file", Value: safeRel(codeownersRoot, codeowners.Path), Source: "CODEOWNERS"})
-		} else {
-			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "codeowners_file", Value: "not found", Source: "CODEOWNERS"})
-		}
-		ownerResolution := ownership.Resolve(ownership.ResolveInput{
-			Config:         s.Config.Owners,
-			ModulePath:     pkg.ModulePath,
-			ModuleRoot:     pkg.ModuleRoot,
-			RepoRoot:       repoPath,
-			CodeownersRoot: codeownersRoot,
-			PackageDir:     pkg.Dir,
-			Codeowners:     codeowners,
-			AuthorCounts:   authorCounts,
-			MultiModule:    multiModule,
-		})
-		if ownerResolution.Owner != "" {
-			owner := ownerResolution.Owner
-			pr.DominantOwner = &owner
-		}
-		pr.OwnerSource = ownerResolution.Source
-		pr.CandidateOwners = append([]report.OwnerCandidate{}, ownerResolution.Candidates...)
-		pr.OwnershipConfidence = round2(ownerResolution.Confidence)
-		pr.Evidence = append(pr.Evidence, ownerResolution.Evidence...)
-
-		result := scoring.ScorePackage(pr, scoring.Options{
-			Config:           s.Config,
-			CoverageSupplied: s.CoveragePath != "",
-			CoverageUsable:   coverageErr == "",
-			GitAvailable:     gitErr == nil,
-			CodeownersUsed:   codeowners != nil,
-		})
-		pr.ComplexityScore = result.ComplexityScore
-		pr.RiskScore = result.RiskScore
-		pr.ScoreBreakdown = result.Breakdown
-		pr.Evidence = append(pr.Evidence, result.Evidence...)
-		pr.Findings = result.Findings
-		pr.Findings = append(pr.Findings, ownershipFindings(pr, ownerResolution)...)
-		risks = append(risks, pr)
-	}
-
-	sort.SliceStable(risks, func(i, j int) bool {
-		return risks[i].ImportPath < risks[j].ImportPath
+	risks := s.computePackageRisks(ctx, packageRiskContext{
+		repoPath:         repoPath,
+		loaded:           loaded,
+		loadIssues:       loadIssues,
+		coverageResolver: newCoverageResolver(coverageByPackage, loaded, repoPath),
+		coverageErr:      coverageErr,
+		coverageWarnings: coverageWarnings,
+		reverseImports:   reverseImports,
+		gitRoot:          gitRoot,
+		gitErr:           gitErr,
+		codeownersRoot:   codeownersRoot,
+		codeowners:       codeowners,
+		codeownersErr:    coErr,
+		multiModule:      len(fmodule.Selected(s.Modules)) > 1,
+		coverageSupplied: s.CoveragePath != "",
+		coverageUsable:   coverageErr == "",
+		codeownersLoaded: codeowners != nil,
 	})
 
 	boundaryFindings, boundaryWarnings := policy.EvaluateBoundaries(s.Config, packageFacts(risks))
@@ -300,6 +172,207 @@ func (s Scanner) Scan(ctx context.Context, patterns []string) (*report.Report, e
 	}
 	rep.Summary.DependencyCount = len(rep.Dependencies)
 	return rep, nil
+}
+
+type packageRiskContext struct {
+	repoPath         string
+	loaded           []LoadedPackage
+	loadIssues       []LoadIssue
+	coverageResolver coverageResolver
+	coverageErr      string
+	coverageWarnings []string
+	reverseImports   map[string]int
+	gitRoot          string
+	gitErr           error
+	codeownersRoot   string
+	codeowners       *ownership.Codeowners
+	codeownersErr    error
+	multiModule      bool
+	coverageSupplied bool
+	coverageUsable   bool
+	codeownersLoaded bool
+}
+
+func (s Scanner) computePackageRisks(ctx context.Context, scan packageRiskContext) []report.PackageRisk {
+	risks := make([]report.PackageRisk, 0, len(scan.loaded))
+	for _, pkg := range scan.loaded {
+		if shouldSkipDir(scan.repoPath, pkg.Dir) || matchesExclude(scan.repoPath, pkg.Dir, s.ExcludeGlobs) {
+			continue
+		}
+		risks = append(risks, s.computePackageRisk(ctx, pkg, scan))
+	}
+	sort.SliceStable(risks, func(i, j int) bool {
+		return risks[i].ImportPath < risks[j].ImportPath
+	})
+	return risks
+}
+
+func (s Scanner) computePackageRisk(ctx context.Context, pkg LoadedPackage, scan packageRiskContext) report.PackageRisk {
+	metrics, err := CollectMetrics(pkg.Dir, MetricOptions{IncludeGenerated: s.IncludeGenerated})
+	if err != nil {
+		metrics.Errors = append(metrics.Errors, err.Error())
+	}
+
+	pr := packageRiskFromMetrics(pkg, metrics, scan.repoPath, scan.reverseImports[pkg.ImportPath])
+	addPackageLoadErrors(&pr, pkg, scan.loadIssues, metrics.Errors, scan.coverageErr, scan.coverageWarnings, scan.codeownersErr)
+	s.addIncidentEvidence(&pr, pkg)
+	s.applyCoverage(&pr, pkg, scan)
+	authorCounts := applyGitMetrics(ctx, &pr, pkg, scan.gitRoot, scan.gitErr)
+	ownerResolution := s.applyOwnership(&pr, pkg, authorCounts, scan)
+	s.applyScoring(&pr, ownerResolution, scan)
+	return pr
+}
+
+func packageRiskFromMetrics(pkg LoadedPackage, metrics Metrics, repoPath string, reverseImportCount int) report.PackageRisk {
+	return report.PackageRisk{
+		PackageID:             pkg.ID,
+		ImportPath:            pkg.ImportPath,
+		Dir:                   safeRel(repoPath, pkg.Dir),
+		ModulePath:            pkg.ModulePath,
+		ModuleRoot:            pkg.ModuleRoot,
+		LOC:                   metrics.LOC,
+		TestLOC:               metrics.TestLOC,
+		TestFileCount:         metrics.TestFileCount,
+		HasTestFile:           metrics.HasTestFile,
+		TestFuncCount:         metrics.TestFuncCount,
+		BenchmarkCount:        metrics.BenchmarkCount,
+		FuzzCount:             metrics.FuzzCount,
+		ExampleCount:          metrics.ExampleCount,
+		TestToCodeRatio:       testToCodeRatio(metrics),
+		GeneratedLOC:          metrics.GeneratedLOC,
+		FileCount:             metrics.FileCount,
+		GeneratedFileCount:    metrics.GeneratedFileCount,
+		ImportCount:           len(pkg.Imports),
+		ReverseImportCount:    reverseImportCount,
+		DirectInternalImports: append([]string{}, pkg.InternalImports...),
+		LoadErrors:            append([]string{}, pkg.Errors...),
+	}
+}
+
+func testToCodeRatio(metrics Metrics) float64 {
+	if metrics.LOC == 0 {
+		return 0
+	}
+	return float64(metrics.TestLOC) / float64(metrics.LOC)
+}
+
+func addPackageLoadErrors(pr *report.PackageRisk, pkg LoadedPackage, loadIssues []LoadIssue, metricErrors []string, coverageErr string, coverageWarnings []string, codeownersErr error) {
+	pr.LoadErrors = append(pr.LoadErrors, metricErrors...)
+	if coverageErr != "" {
+		pr.LoadErrors = append(pr.LoadErrors, coverageErr)
+	}
+	pr.LoadErrors = append(pr.LoadErrors, coverageWarnings...)
+	if codeownersErr != nil {
+		pr.LoadErrors = append(pr.LoadErrors, codeownersErr.Error())
+	}
+	for _, issue := range loadIssues {
+		if issue.PackageID == pkg.ID || issue.ImportPath == pkg.ImportPath {
+			pr.LoadErrors = appendUnique(pr.LoadErrors, issue.Error)
+		}
+	}
+}
+
+func (s Scanner) addIncidentEvidence(pr *report.PackageRisk, pkg LoadedPackage) {
+	incidentItems := s.IncidentIndex[pkg.ImportPath]
+	if len(incidentItems) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(incidentItems))
+	for _, inc := range incidentItems {
+		if inc.ID != "" {
+			ids = append(ids, inc.ID)
+		}
+	}
+	sort.Strings(ids)
+	pr.IncidentIDs = ids
+	pr.IncidentCount = len(ids)
+	for _, id := range ids {
+		pr.Evidence = append(pr.Evidence, report.Evidence{Key: "incident_id", Value: id, Source: "incidents"})
+	}
+}
+
+func (s Scanner) applyCoverage(pr *report.PackageRisk, pkg LoadedPackage, scan packageRiskContext) {
+	if match, ok := scan.coverageResolver.ForPackage(pkg); ok {
+		v := round2(match.Pct)
+		pr.CoveragePct = &v
+		pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_pct", Value: fmt.Sprintf("%.2f", v), Source: "coverage"})
+		if match.Key != "" {
+			pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage_key", Value: match.Key, Source: "coverage"})
+		}
+		return
+	}
+	if s.CoveragePath != "" && scan.coverageErr == "" {
+		pr.Evidence = append(pr.Evidence, report.Evidence{Key: "coverage", Value: "unknown for package", Source: "coverage"})
+	}
+}
+
+func applyGitMetrics(ctx context.Context, pr *report.PackageRisk, pkg LoadedPackage, gitRoot string, gitErr error) map[string]int {
+	authorCounts := map[string]int{}
+	if gitErr != nil {
+		return authorCounts
+	}
+	churn, err := fgit.PackageChurn(ctx, gitRoot, pkg.Dir)
+	if err == nil {
+		pr.Churn30d = churn.Churn30d
+		pr.Churn90d = churn.Churn90d
+		pr.AuthorCount90d = churn.AuthorCount90d
+		pr.Evidence = append(pr.Evidence,
+			report.Evidence{Key: "git_window_30d", Value: fgit.Window30d, Source: "git"},
+			report.Evidence{Key: "git_window_90d", Value: fgit.Window90d, Source: "git"},
+			report.Evidence{Key: "churn_unit", Value: "added+deleted lines", Source: "git"},
+		)
+	} else {
+		pr.LoadErrors = append(pr.LoadErrors, err.Error())
+	}
+	authorCounts, err = fgit.PackageAuthorCounts(ctx, gitRoot, pkg.Dir)
+	if err == nil {
+		pr.OwnershipEntropy = round2(ownership.NormalizedEntropy(authorCounts))
+	}
+	return authorCounts
+}
+
+func (s Scanner) applyOwnership(pr *report.PackageRisk, pkg LoadedPackage, authorCounts map[string]int, scan packageRiskContext) ownership.Resolution {
+	if scan.codeowners != nil {
+		pr.Evidence = append(pr.Evidence, report.Evidence{Key: "codeowners_file", Value: safeRel(scan.codeownersRoot, scan.codeowners.Path), Source: "CODEOWNERS"})
+	} else {
+		pr.Evidence = append(pr.Evidence, report.Evidence{Key: "codeowners_file", Value: "not found", Source: "CODEOWNERS"})
+	}
+	resolution := ownership.Resolve(ownership.ResolveInput{
+		Config:         s.Config.Owners,
+		ModulePath:     pkg.ModulePath,
+		ModuleRoot:     pkg.ModuleRoot,
+		RepoRoot:       scan.repoPath,
+		CodeownersRoot: scan.codeownersRoot,
+		PackageDir:     pkg.Dir,
+		Codeowners:     scan.codeowners,
+		AuthorCounts:   authorCounts,
+		MultiModule:    scan.multiModule,
+	})
+	if resolution.Owner != "" {
+		owner := resolution.Owner
+		pr.DominantOwner = &owner
+	}
+	pr.OwnerSource = resolution.Source
+	pr.CandidateOwners = append([]report.OwnerCandidate{}, resolution.Candidates...)
+	pr.OwnershipConfidence = round2(resolution.Confidence)
+	pr.Evidence = append(pr.Evidence, resolution.Evidence...)
+	return resolution
+}
+
+func (s Scanner) applyScoring(pr *report.PackageRisk, ownerResolution ownership.Resolution, scan packageRiskContext) {
+	result := scoring.ScorePackage(*pr, scoring.Options{
+		Config:           s.Config,
+		CoverageSupplied: scan.coverageSupplied,
+		CoverageUsable:   scan.coverageUsable,
+		GitAvailable:     scan.gitErr == nil,
+		CodeownersUsed:   scan.codeownersLoaded,
+	})
+	pr.ComplexityScore = result.ComplexityScore
+	pr.RiskScore = result.RiskScore
+	pr.ScoreBreakdown = result.Breakdown
+	pr.Evidence = append(pr.Evidence, result.Evidence...)
+	pr.Findings = result.Findings
+	pr.Findings = append(pr.Findings, ownershipFindings(*pr, ownerResolution)...)
 }
 
 func packageFacts(pkgs []report.PackageRisk) []policy.PackageFacts {
