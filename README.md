@@ -58,6 +58,25 @@ Commercial Faultline products should be additive: multi-repo dashboards, central
 
 The public integration contract for paid systems is metadata-only: `faultline scan --format snapshot` emits `faultline.snapshot.v1`, a source-free upload contract. See [docs/open-core.md](docs/open-core.md) and [docs/export-contracts.md](docs/export-contracts.md).
 
+## MCP and Agent Skills
+
+Faultline Enterprise exposes optional agent integrations for teams that want AI
+assistants to query portfolio governance data without uploading source code.
+The OSS scanner remains local-first; agents work from Enterprise metadata such
+as snapshot summaries, risk scores, finding codes, suppressions, policy packs,
+and audit events.
+
+- MCP endpoint: `https://mcp.gofaultline.dev/mcp`
+- MCP docs: `https://docs.gofaultline.dev/mcp/`
+- Agent Skills discovery: `https://skills.gofaultline.dev/llms.txt`
+- Faultline skill manifest:
+  `https://skills.gofaultline.dev/faultline/SKILL.md`
+
+Utility MCP tools such as `faultline_explain_finding` and
+`faultline_explain_score` require no authentication. Enterprise data tools
+require a Faultline API token from `app.gofaultline.dev` and operate against
+metadata-only org/repo records.
+
 ## Installation
 
 Install from source with Go:
