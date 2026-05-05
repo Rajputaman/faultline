@@ -1,0 +1,9 @@
+# Faultline OSS — ownership
+* @faultline-go/core
+
+/cmd/          @faultline-go/core
+/internal/cli/ @faultline-go/core
+/internal/policy/ @faultline-go/core
+/internal/analyzer/ @faultline-go/core
+/internal/report/ @faultline-go/core
+/internal/prreview/ @faultline-go/core
