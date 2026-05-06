@@ -21,6 +21,7 @@ type prOptions struct {
 	sarifOut               string
 	post                   bool
 	failOn                 string
+	coverage               string
 	config                 string
 	strictConfig           bool
 	allowConfigOutsideRepo bool
@@ -56,6 +57,7 @@ func newPRReviewCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.sarifOut, "sarif-out", "", "write SARIF with new unsuppressed PR findings")
 	cmd.Flags().BoolVar(&opts.post, "post", false, "post or update a GitHub PR comment when token and PR context are available")
 	cmd.Flags().StringVar(&opts.failOn, "fail-on", "none", "exit non-zero on new findings at threshold: none, high, or critical")
+	cmd.Flags().StringVar(&opts.coverage, "coverage", "", "optional Go coverage profile")
 	cmd.Flags().StringVar(&opts.config, "config", "", "optional faultline.yaml path")
 	cmd.Flags().BoolVar(&opts.strictConfig, "strict-config", false, "fail on config validation warnings or errors")
 	cmd.Flags().BoolVar(&opts.allowConfigOutsideRepo, "allow-config-outside-repo", false, "allow rule pack paths outside the repository root")
@@ -106,6 +108,7 @@ func runPRReview(cmd *cobra.Command, opts prOptions) error {
 		ConfigWarnings:  configWarnings,
 		ConfigRulePacks: reportRulePacks(validation.RulePacks),
 		ConfigHash:      validation.ConfigHash,
+		CoveragePath:    opts.coverage,
 		StrictConfig:    opts.strictConfig,
 		CommentOut:      opts.commentOut,
 		SARIFOut:        opts.sarifOut,
@@ -128,7 +131,22 @@ func runPRReview(cmd *cobra.Command, opts prOptions) error {
 		OrgID:   opts.enterpriseOrgID,
 	}
 	if uploadCfg.IsConfigured() {
-		fmt.Fprintf(cmd.ErrOrStderr(), "enterprise upload: snapshot upload after PR review not yet supported\n")
+		if review.HeadReport == nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: enterprise upload failed: PR review did not produce a scan report\n")
+		} else {
+			snapshotJSON, err := generateSnapshotJSON(review.HeadReport)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: could not prepare PR review snapshot for upload: %v\n", err)
+			} else {
+				result, err := upload.UploadSnapshot(cmd.Context(), uploadCfg, snapshotJSON)
+				if err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(), "warning: enterprise upload failed: %v\n", err)
+				} else {
+					fmt.Fprintf(cmd.ErrOrStderr(), "enterprise: snapshot uploaded (id: %s, packages: %d, findings: %d)\n",
+						result.SnapshotID, result.PackageCount, result.FindingCount)
+				}
+			}
+		}
 	}
 	if failOn != "" && prreview.HasFailingNewFinding(review, report.Severity(failOn)) {
 		return ExitError{Code: 1, Err: fmt.Errorf("PR review found new findings at or above %s", strings.ToLower(failOn))}

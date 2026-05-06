@@ -744,6 +744,17 @@ When `--sarif-out` is used, the markdown review notes that inline annotations ar
 
 When `--post` is supplied, Faultline uses `GITHUB_TOKEN`, repository, and PR number context to upsert a single comment marked with `<!-- faultline-pr-review -->`. If posting fails or no token is available, local markdown generation still works.
 
+With Enterprise credentials, PR reviews also upload a source-free
+`faultline.snapshot.v1` snapshot for the reviewed head revision:
+
+```sh
+faultline pr review \
+  --compare-mode auto \
+  --enterprise-url https://api.gofaultline.dev \
+  --enterprise-token "$FAULTLINE_API_TOKEN" \
+  --enterprise-org-id "$FAULTLINE_ORG_ID"
+```
+
 GitHub Actions should use `fetch-depth: 0` so `origin/main` or the detected base branch exists locally. With shallow checkout or missing base refs, `auto` mode falls back to history and reports the fallback reason in the comment.
 
 Example workflow:

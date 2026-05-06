@@ -39,6 +39,7 @@ type Options struct {
 	ConfigWarnings  []report.Warning
 	ConfigRulePacks []report.ConfigRulePack
 	ConfigHash      string
+	CoveragePath    string
 	StrictConfig    bool
 	CommentOut      string
 	SARIFOut        string
@@ -102,6 +103,7 @@ type Review struct {
 	ChangedFilesUnowned  []string
 	OwnerMismatches      []FileOwnerSummary
 	Packages             []PackageReview
+	HeadReport           *report.Report
 }
 
 type FileOwnerSummary struct {
@@ -179,6 +181,7 @@ func Run(ctx context.Context, opts Options) (*Review, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	review.HeadReport = rep
 	for _, warning := range rep.Warnings {
 		review.Warnings = append(review.Warnings, fmt.Sprintf("%s: %s", warning.Source, warning.Message))
 	}
@@ -503,11 +506,12 @@ func worktreeComparison(head, base *report.Report, review *Review) comparisonSou
 func scanRepo(ctx context.Context, repoRoot string, opts Options) (*report.Report, error) {
 	modules, goWork := reviewModules(repoRoot)
 	scanner := analyzer.Scanner{
-		RepoPath:   repoRoot,
-		Config:     opts.Config,
-		ConfigPath: opts.ConfigPath,
-		Modules:    modules,
-		GoWorkPath: goWork,
+		RepoPath:     repoRoot,
+		Config:       opts.Config,
+		ConfigPath:   opts.ConfigPath,
+		CoveragePath: opts.CoveragePath,
+		Modules:      modules,
+		GoWorkPath:   goWork,
 	}
 	return scanner.Scan(ctx, []string{"./..."})
 }
