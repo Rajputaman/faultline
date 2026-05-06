@@ -630,7 +630,7 @@ Source code and scan data stay in the local environment. Faultline only invokes 
 The easiest way to run Faultline in CI:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
   with:
     fetch-depth: 0
 - uses: faultline-go/action@v1
