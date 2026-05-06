@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/faultline-go/faultline.svg)](https://pkg.go.dev/github.com/faultline-go/faultline)
 
-**Local-first structural risk analysis for Go codebases.**
+**Structural risk. Source-free evidence for Go repositories.**
 
-Faultline scans Go repositories and produces explainable package-level risk reports from code structure, git history, ownership, coverage, dependency metadata, and architecture policy inputs. It is built for teams that need to find technical-debt hotspots before they become incidents, without sending source code to a hosted service.
+Faultline is a local-first structural risk scanner for Go repositories. It produces explainable package-level evidence from code structure, git history, ownership, coverage, dependency metadata, test signals, incident annotations, and architecture policy inputs without sending source code to a hosted service.
 
 ```sh
 go install github.com/faultline-go/faultline/cmd/faultline@latest
@@ -16,22 +16,23 @@ faultline scan ./... --format html --out faultline-report.html
 
 ![Faultline HTML report screenshot](docs/assets/report-screenshot.png)
 
-Faultline is local-first. It does not upload source code, run a server, execute repository scripts, or require runtime network access. Reports can be generated as HTML, JSON, SARIF for GitHub code scanning, or a metadata-only snapshot for portfolio governance.
+Faultline is local-first. It does not upload source code, run a server, execute repository scripts, or require runtime network access. Reports can be generated as HTML, JSON, SARIF for GitHub code scanning, PR markdown, or a metadata-only snapshot for portfolio governance.
 
 ## Why Teams Use It
 
-- **Find structural risk early:** combine churn, coverage, ownership, dependencies, centrality, and policy drift into one package-level signal.
-- **Keep analysis explainable:** every score includes evidence so teams can see why a package is risky.
+- **Evidence over opinion:** show which packages have high churn, low coverage, unclear ownership, high centrality, thin tests, incident history, stale suppressions, or policy drift.
 - **Stay local by default:** scan in a developer shell or CI without uploading source code.
-- **Bridge to governance:** export `faultline.snapshot.v1` metadata for dashboards and audit workflows while keeping code private.
+- **Keep analysis explainable:** every score includes evidence so teams can see why a package is risky.
+- **Bridge to governance:** export `faultline.snapshot.v1` metadata for dashboards, suppression review, policy workflows, and audit-ready reporting while keeping code private.
 
 ## OSS to Enterprise in One Setup Session
 
 Use the open-source scanner when you need local reports, PR comments, SARIF, or
 metadata snapshots inside a developer-controlled environment. Use Faultline
-Enterprise when a Go-heavy engineering organization needs multi-repo visibility,
-weekly governance review, suppression debt tracking, policy pack workflows, and
-audit evidence.
+Enterprise when a Go-heavy engineering organization needs a governance evidence
+layer across repositories: weekly review, ownership drift, suppression debt,
+policy pack workflows, dependency health, incident correlation, and audit
+evidence.
 
 The fastest Enterprise path is:
 
@@ -65,13 +66,16 @@ Faultline OSS is Apache 2.0 licensed. The public project is intended to stay gen
 
 ## What Faultline Is
 
-- A local CLI for package-level Go risk reports.
-- A way to surface packages with high churn, low coverage, unclear ownership, high centrality, or generated-code-heavy metrics.
-- A metadata producer for optional hosted governance, audit, and portfolio reporting.
+- A local CLI for package-level Go structural risk evidence.
+- A way to surface packages with high churn, low coverage, unclear ownership, high centrality, thin tests, incident history, dependency risk signals, or generated-code-heavy metrics.
+- A source-free metadata producer for optional hosted governance, audit, and portfolio reporting.
 
 ## What Faultline Is Not
 
 - It is not a vulnerability scanner.
+- It is not a code quality platform.
+- It is not a runtime observability tool.
+- It is not engineering productivity analytics.
 - It is not a SaaS backend.
 - It is not a dashboard.
 - It is not a replacement for tests, code review, or architecture ownership.
@@ -809,7 +813,7 @@ jobs:
 - Suppressions are implemented as expiring waivers; they do not remove findings from reports.
 - CODEOWNERS matching is approximate.
 - Generated code is counted separately and excluded from LOC complexity by default, but generated-heavy packages still need human interpretation.
-- GitHub App and hosted upload workflows are on the roadmap; the current OSS scanner is intentionally local-first and source-free.
+- GitHub App installation is on the roadmap. Hosted Enterprise upload is available through the CLI flags and `faultline-go/action@v1`, while the OSS scanner remains intentionally local-first and source-free.
 
 ## Governance Note
 

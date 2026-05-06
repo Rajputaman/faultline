@@ -2,7 +2,7 @@
 
 This document defines the intended split between the public Faultline OSS CLI
 and the private commercial product. The goal is to keep the local scanner
-excellent while monetizing organization-wide coordination, governance, and
+excellent while monetizing organization-wide coordination, governance evidence, and
 workflow automation.
 
 ## Product Principle
@@ -11,7 +11,12 @@ Faultline should not become crippleware. The public CLI must remain useful for a
 single repository, a developer laptop, and a CI job without login, telemetry, or
 source-code upload. Paid value starts when teams need cross-repository
 coordination, approvals, portfolio analytics, centralized policy distribution,
-identity integration, and managed workflow automation.
+identity integration, signed exports, and managed workflow automation.
+
+Brand boundary: Faultline is the governance evidence layer for Go-heavy
+engineering organizations carrying production risk. The OSS scanner provides the
+local structural signals; Enterprise turns those source-free signals into
+organization-wide evidence, workflows, and audit artifacts.
 
 ## Recommended Architecture
 
