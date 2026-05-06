@@ -27,7 +27,7 @@ type SelectionOptions struct {
 }
 
 // Discover finds go.mod files under repoRoot, excluding common generated and
-// vendored trees. go.work is detected only at the repository root for now.
+// vendored trees. go.work is detected only at the repository root.
 func Discover(repoRoot string) (Discovery, error) {
 	repoAbs, err := filepath.Abs(repoRoot)
 	if err != nil {

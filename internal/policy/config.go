@@ -250,7 +250,10 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 func LoadConfigWithValidation(path string) (*Config, ValidationReport, error) {
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, ValidationReport{Path: path}, fmt.Errorf("get working directory: %w", err)
+	}
 	return ResolveConfigWithValidation(path, ResolveOptions{RepoRoot: cwd, Now: time.Now().UTC()})
 }
 
@@ -259,7 +262,11 @@ func ResolveConfigWithValidation(path string, opts ResolveOptions) (*Config, Val
 		opts.Now = time.Now().UTC()
 	}
 	if opts.RepoRoot == "" {
-		opts.RepoRoot, _ = os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, ValidationReport{Path: path}, fmt.Errorf("get working directory: %w", err)
+		}
+		opts.RepoRoot = cwd
 	}
 	base, root, rawHash, err := readConfigDocument(path, true)
 	if err != nil {

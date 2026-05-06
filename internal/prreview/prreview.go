@@ -255,7 +255,9 @@ func Run(ctx context.Context, opts Options) (*Review, string, error) {
 			review.Warnings = append(review.Warnings, fmt.Sprintf("GitHub comment not posted: %v", err))
 			body = RenderMarkdown(review)
 			if opts.CommentOut != "" {
-				_ = os.WriteFile(opts.CommentOut, []byte(body), 0644)
+				if err := os.WriteFile(opts.CommentOut, []byte(body), 0644); err != nil {
+					return review, body, fmt.Errorf("write comment output with warning: %w", err)
+				}
 			}
 		}
 	}
