@@ -5,7 +5,7 @@ internal/ownership/codeowners.go:123:23: unreachable func: Codeowners.OwnersForP
 internal/ownership/codeowners.go:154:23: unreachable func: Codeowners.OwnersForPackage
 internal/policy/config.go:247:6: unreachable func: LoadConfig
 internal/policy/config.go:252:6: unreachable func: LoadConfigWithValidation
-internal/policy/config.go:411:6: unreachable func: ConfigHash
-internal/prreview/prreview.go:663:6: unreachable func: WithBaseWorktree
+internal/policy/config.go:418:6: unreachable func: ConfigHash
+internal/prreview/prreview.go:665:6: unreachable func: WithBaseWorktree
 internal/sarif/sarif.go:129:6: unreachable func: Convert
 internal/sarif/sarif.go:146:6: unreachable func: Build
