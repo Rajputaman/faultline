@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Enterprise support
-    url: https://gofaultline.dev/contact/
-    about: Faultline Enterprise questions, pilots, and demos
-  - name: Documentation
-    url: https://docs.gofaultline.dev
-    about: Docs for OSS scanner and Enterprise upload
